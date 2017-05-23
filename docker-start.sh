@@ -27,7 +27,7 @@ fi
 
 docker build --tag shingo-auth-api:${TAG} .
 
-docker network create shingo-dev-net
+# docker network create shingo-dev-net
 
 # docker kill shingo-redis
 # docker rm shingo-redis
