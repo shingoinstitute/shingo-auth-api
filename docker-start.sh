@@ -29,14 +29,14 @@ docker build --tag shingo-auth-api:${TAG} .
 
 docker network create shingo-dev-net
 
-docker kill shingo-redis
-docker rm shingo-redis
+# docker kill shingo-redis
+# docker rm shingo-redis
 
-docker run -itd                                             \
-    --name shingo-redis                                     \
-    --volume $(pwd)/build/redis:/data                       \
-    --network shingo-dev-net                                \
-    redis redis-server
+# docker run -itd                                             \
+#     --name shingo-redis                                     \
+#     --volume $(pwd)/build/redis:/data                       \
+#     --network shingo-dev-net                                \
+#     redis redis-server
 
 docker kill shingo-auth-api
 docker rm shingo-auth-api

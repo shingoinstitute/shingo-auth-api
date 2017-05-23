@@ -1,6 +1,7 @@
 import { Dependencies, Controller } from 'nest.js';
 import { MessagePattern } from 'nest.js/microservices';
 import { MySQLService } from './database/mysql.service'
+import { Level } from './database/entities/Permission'
 import * as jwt from 'jwt-simple';
 
 @Controller()
@@ -48,7 +49,7 @@ export class AuthController {
                 return respond(null, false)
             }
 
-            if(!permission || permission.level === 0){
+            if(!permission || permission.level === Level.Deny){
                 return respond(null, false)
             } else if(permission.level >= data.level){
                 console.log(`Has permission ${JSON.stringify(permission)} with level >= ${data.level}`)

@@ -48,12 +48,22 @@ export class MySQLService{
         return Promise.resolve(user)
     }
 
+    public async getUserPermissionsByJWT(JWT : string, resource : string){
+        let userRepo = MySQLService.connection.getRepository(User);
+        let user = await userRepo.createQueryBuilder('user')
+                            .leftJoinAndSelect('user.permissions', 'permissions')
+                            .where(`user.jwt='${JWT}'`)
+                            .andWhere(`permissions.resource LIKE '${resource}'`)
+                            .getOne();
+        return Promise.resolve(user);
+    }
+
     public async getPermissionsByRoleAndResource(roleId : number, resource : string){
         let permissionRepo = MySQLService.connection.getRepository(Permission)
 
         let permissions = await permissionRepo.createQueryBuilder("permission")
                             .leftJoinAndSelect("permission.roles", "roles", `roles.id=${roleId}`)
-                            .where(`permission.resource=${resource}`)
+                            .where(`permission.resource LIKE '${resource}'`)
                             .getMany();
         return Promise.resolve(permissions);
     }
