@@ -1,11 +1,12 @@
-import { Component } from 'nest.js'
+import { Component } from 'nest.js';
 import 'reflect-metadata';
-import * as scrypt from 'scrypt'
-import { createConnection, Connection } from 'typeorm'
-import { Auth } from './entities/Auth'
-import { Permission } from './entities/Permission'
-import { Role } from './entities/Role'
-import { User } from './entities/User'
+import * as scrypt from 'scrypt';
+import { createConnection, Connection } from 'typeorm';
+import { UserDriver } from './user.driver';
+import { PermissionDriver } from './permission.driver';
+import { Auth, Permission, Role, User, Level } from './entities';
+
+export { Auth, Permission, Role, User, Level };
 
 @Component()
 export class MySQLService{
@@ -38,97 +39,48 @@ export class MySQLService{
 
     }
 
+    /*  USER ACTIONS */
+
     public async getUserByJWT(JWT : string){
-        let userRepo = MySQLService.connection.getRepository(User)
-        let user = await userRepo.createQueryBuilder('user')
-                            .leftJoinAndSelect("user.permissions", "permissions")
-                            .where(`user.jwt='${JWT}'`)
-                            .getOne();
-
-        return Promise.resolve(user)
+        return UserDriver.getByJWT(MySQLService.connection, JWT);
     }
 
-    public async getUserPermissionsByJWT(JWT : string, resource : string){
-        let userRepo = MySQLService.connection.getRepository(User);
-        let user = await userRepo.createQueryBuilder('user')
-                            .leftJoinAndSelect('user.permissions', 'permissions')
-                            .where(`user.jwt='${JWT}'`)
-                            .andWhere(`permissions.resource LIKE '${resource}'`)
-                            .getOne();
-        return Promise.resolve(user);
-    }
-
-    public async getPermissionsByRoleAndResource(roleId : number, resource : string){
-        let permissionRepo = MySQLService.connection.getRepository(Permission)
-
-        let permissions = await permissionRepo.createQueryBuilder("permission")
-                            .leftJoinAndSelect("permission.roles", "roles", `roles.id=${roleId}`)
-                            .where(`permission.resource LIKE '${resource}'`)
-                            .getMany();
-        return Promise.resolve(permissions);
-    }
 
     public async login(email : string, password : string){
-        let authRepo = MySQLService.connection.getRepository(Auth)
-
-        let auth = await authRepo.findOne({ email })
-
-        if( auth === undefined) return Promise.resolve()
-
-        console.log(`auth.password = ${auth.password}`)
-
-        let matches = await scrypt.verifyKdf(new Buffer(auth.password, "base64"), password)
-
-        auth = await authRepo.createQueryBuilder('auth')
-                                .innerJoinAndSelect('auth.user', 'user')
-                                .where(`auth.id=${auth.id}`)
-                                .getOne();
-
-        if(matches) return Promise.resolve(auth.user);
-        return Promise.resolve();
+        return UserDriver.login(MySQLService.connection, email, password);
     }
 
     public async createAuth(email : string, password : string){
-        let authRepo = MySQLService.connection.getRepository(Auth)
-
-        let auth = new Auth();
-        auth.email = email;
-        auth.password = scrypt.kdfSync(password, scrypt.paramsSync(0.1)).toString("base64");
-
-        await authRepo.persist(auth);       
-        
-        auth = await authRepo.findOne({email: auth.email, password: auth.password})
-        return Promise.resolve(auth)
+        return UserDriver.createAuth(MySQLService.connection, email, password);
     }
 
     public async createUser(auth : Auth, JWT : string){
-        let userRepo = MySQLService.connection.getRepository(User)
-        let user = new User();
-        user.auth = auth;
-        user.jwt = JWT;
-
-        await userRepo.persist(user);
-
-        user = await userRepo.findOne({ jwt : JWT })
-        return Promise.resolve(user)
+        return UserDriver.createUser(MySQLService.connection, auth, JWT);
     }
 
     public async saveUser(user : User){
-        let userRepo = MySQLService.connection.getRepository(User)
-        delete user.permissions
-        await userRepo.persist(user)
-        return Promise.resolve(user)
+        return UserDriver.saveUser(MySQLService.connection, user);
     }
 
     public async findUserByEmail(email : string){
-        let authRepo = MySQLService.connection.getRepository(Auth);
-        let auth = await authRepo.createQueryBuilder('auth')
-                        .innerJoinAndSelect('auth.user', 'user')
-                        .where(`auth.email='${email}'`)
-                        .getOne();
+        return UserDriver.findUserByEmail(MySQLService.connection, email);
+    }
 
-        if( auth === undefined) return Promise.resolve();
+    /* PERMISSION ACTIONS */
 
-        return Promise.resolve(auth.user)
+    public async getPermissionsByRoleAndResource(roleId : number, resource : string){
+        return PermissionDriver.getPermissionsByRoleAndResource(MySQLService.connection, roleId, resource);
+    }
+
+    public async createPermission(resource : string, level : Level){
+        return PermissionDriver.create(MySQLService.connection, resource, level);
+    }
+
+    public async grantPermission(userId : number, permissionId : number){
+        return PermissionDriver.grant(MySQLService.connection, userId, permissionId);
+    }
+
+    public async findPermission(resource : string, level : Level){
+        return PermissionDriver.find(MySQLService.connection, resource, level);
     }
 }

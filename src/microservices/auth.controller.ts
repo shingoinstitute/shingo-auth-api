@@ -1,7 +1,7 @@
 import { Dependencies, Controller } from 'nest.js';
 import { MessagePattern } from 'nest.js/microservices';
-import { MySQLService } from './database/mysql.service'
-import { Level } from './database/entities/Permission'
+import { MySQLService } from '../database/mysql.service'
+import { Level } from '../database/entities/Permission'
 import * as jwt from 'jwt-simple';
 
 @Controller()

@@ -1,6 +1,6 @@
 import { Module } from 'nest.js';
 import { LocalModule } from './local/local.module';
-import { AuthController } from './auth.controller';
+import { AuthController } from './microservices';
 import { MySQLService } from './database/mysql.service'
 import 'rxjs';
 
