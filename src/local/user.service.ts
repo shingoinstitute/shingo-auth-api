@@ -10,7 +10,6 @@ export class UserService{
         this.db = new MySQLService();
     }
 
-
     public async create(email : string, password : string){
         let user = await this.db.findUserByEmail(email);
         if(user !== undefined) return Promise.reject('User already exists')
@@ -20,10 +19,13 @@ export class UserService{
         return Promise.resolve(user);
     }
 
-    
+    public async get(email : string){
+        let user = await this.db.findUserByEmail(email);
+        return Promise.resolve(user);
+    }
 
     public async login(email : string, password : string){
-        let user = await this.db.login(email, password)
+        let user = await this.db.login(email, password);
         return Promise.resolve(user)
     }
 

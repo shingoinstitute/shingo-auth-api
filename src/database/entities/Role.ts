@@ -15,7 +15,6 @@ export class Role {
         cascadeInsert: false,
         cascadeUpdate: false
     })
-    @JoinTable()
     permissions : Permission[] = [];
 
     @OneToMany(type => User, user => user.role)

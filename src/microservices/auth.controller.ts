@@ -19,7 +19,7 @@ export class AuthController {
         console.log('jwt expires: ', decode.expires)
         if(new Date(decode.expires) <= new Date()) return Promise.resolve(false)
 
-        return Promise.resolve(true)
+        return Promise.resolve(true);
     }
 
     @MessagePattern({ cmd: 'isValid' })
@@ -27,6 +27,18 @@ export class AuthController {
         let valid = await this.validJWT(data)
     
         respond(null, valid)
+    }
+
+    @MessagePattern({ cmd: 'getPermissions' })
+    public async getPermissions(data, respond){
+        try{
+            let user = await this.db.findUserByEmail(data.email);
+            if(user === undefined) respond({error: "User not found!"});
+            respond(null, user.permissions);
+        } catch (error) {
+            console.error(`Error in AuthController.getPermissions(): ${error}`);
+            respond(error);
+        }
     }
 
     @MessagePattern({ cmd: 'canAccess' })
@@ -37,22 +49,24 @@ export class AuthController {
             console.log('JWT is valid')
             
             let user = await this.db.getUserByJWT(data.jwt);
-            console.log(`Found user ${JSON.stringify(user)}`)
-            let permission = user.permissions.find(p => p.resource === data.resource);
 
-            if(!permission && user.role !== undefined){
-                let rolePermissions = await this.db.getPermissionsByRoleAndResource(user.role.id, data.resource)
-                rolePermissions.forEach(element => {
-                    if(element.level >= data.level) return respond(null, true)
-                })
-
-                return respond(null, false)
+            if(user.role !== undefined){
+                let role = await this.db.getRoleWithPermissions(user.role.id);
+                user.permissions.concat(role.permissions);
             }
 
-            if(!permission || permission.level === Level.Deny){
+            user.permissions.forEach(p => {
+                if(p.level === Level.Deny) return respond(null, false);
+            })
+
+            let permissions = user.permissions.filter(p => p.resource === data.resource);
+            permissions.sort((a,b) => { return b.level - a.level });
+            let permission = permissions[0];
+
+            if(!permission){
                 return respond(null, false)
             } else if(permission.level >= data.level){
-                console.log(`Has permission ${JSON.stringify(permission)} with level >= ${data.level}`)
+                console.log(`Has permission ${permission} with level >= ${data.level}`)
                 return respond(null ,true)
             }
         }

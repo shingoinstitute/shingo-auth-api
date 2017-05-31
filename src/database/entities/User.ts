@@ -22,8 +22,8 @@ export class User {
     auth : Auth;
 
     @ManyToMany(type => Permission, permission => permission.users, {
-        cascadeInsert: true,
-        cascadeUpdate: true
+        cascadeInsert: false,
+        cascadeUpdate: false
     })
     permissions : Permission[] = [];
 

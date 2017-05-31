@@ -4,6 +4,7 @@ import * as scrypt from 'scrypt';
 import { createConnection, Connection } from 'typeorm';
 import { UserDriver } from './user.driver';
 import { PermissionDriver } from './permission.driver';
+import { RoleDriver } from './role.driver';
 import { Auth, Permission, Role, User, Level } from './entities';
 
 export { Auth, Permission, Role, User, Level };
@@ -45,7 +46,6 @@ export class MySQLService{
         return UserDriver.getByJWT(MySQLService.connection, JWT);
     }
 
-
     public async login(email : string, password : string){
         return UserDriver.login(MySQLService.connection, email, password);
     }
@@ -76,11 +76,24 @@ export class MySQLService{
         return PermissionDriver.create(MySQLService.connection, resource, level);
     }
 
-    public async grantPermission(userId : number, permissionId : number){
-        return PermissionDriver.grant(MySQLService.connection, userId, permissionId);
+    public async grantPermission(userId : number, permissionId : number, isRole = false){
+        return PermissionDriver.grant(MySQLService.connection, userId, permissionId, isRole);
     }
 
     public async findPermission(resource : string, level : Level){
         return PermissionDriver.find(MySQLService.connection, resource, level);
+    }
+    
+    public async findPermissions(resource : string, level : Level){
+        return PermissionDriver.findLike(MySQLService.connection, resource, level);
+    }
+
+    /* ROLE ACTIONS */
+    public async getRoleWithPermissions(roleId : number){
+        return RoleDriver.getWithPermissions(MySQLService.connection, roleId);
+    }
+
+    public async findRoleByName(roleName : string){
+        return RoleDriver.find(MySQLService.connection, roleName);
     }
 }

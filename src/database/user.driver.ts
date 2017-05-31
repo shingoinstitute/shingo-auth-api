@@ -1,5 +1,5 @@
 import { Connection } from 'typeorm';
-import { User, Auth } from './entities';
+import { User, Auth, Role } from './entities';
 import * as scrypt from 'scrypt';
 
 export class UserDriver {
@@ -7,6 +7,7 @@ export class UserDriver {
         let userRepo = connection.getRepository(User)
         let user = await userRepo.createQueryBuilder('user')
                             .leftJoinAndSelect("user.permissions", "permissions")
+                            .innerJoinAndSelect("user.auth", "auth")
                             .where(`user.jwt='${jwt}'`)
                             .getOne();
 
@@ -67,11 +68,27 @@ export class UserDriver {
 
     static async findUserByEmail(connection : Connection, email : string){
         let authRepo = connection.getRepository(Auth);
+        let userRepo = connection.getRepository(User);
+        let roleRepo = connection.getRepository(Role);
+
         let auth = await authRepo.createQueryBuilder('auth')
                         .innerJoinAndSelect('auth.user', 'user')
                         .where(`auth.email='${email}'`)
                         .getOne();
 
-        return Promise.resolve(auth.user)
+        let user = await userRepo.createQueryBuilder('user')
+                        .where(`user.id=${auth.user.id}`)
+                        .innerJoinAndSelect('user.permissions', 'permissions')
+                        .getOne();
+
+        if(user.role){
+            let role = await roleRepo.createQueryBuilder('role')
+                            .innerJoinAndSelect('role.permissions', 'permissions')
+                            .where(`role.id=${user.role.id}`)
+                            .getOne();
+            user.permissions.concat(role.permissions);
+        }
+
+        return Promise.resolve(user);
     }
 }

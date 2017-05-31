@@ -28,9 +28,10 @@ export class AuthController {
                 .json({error: 'Invalid username or password!'})
         }
 
-        let token = await this.users.updateJWT(username)
+        let token = await this.users.updateJWT(username);
+        user = await this.users.get(username);
         res.status(HttpStatus.OK)
-            .json({jwt: token})
+            .json({user});
     }
 
     @Post('create')

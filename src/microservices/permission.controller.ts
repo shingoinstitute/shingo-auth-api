@@ -1,7 +1,6 @@
 import { Dependencies, Controller } from 'nest.js';
 import { MessagePattern } from 'nest.js/microservices';
 import { MySQLService } from '../database/mysql.service'
-import { Level } from '../database/entities/Permission'
 import * as jwt from 'jwt-simple';
 
 @Controller()
@@ -11,24 +10,39 @@ export class PermissionController {
         this.db = db;
     }
 
-    @MessagePattern({ cmd: 'create' })
+    @MessagePattern({ cmd: 'createPermission' })
     public async create(data, respond){
         let permission = await this.db.createPermission(data.resource, data.level);
         if(permission === undefined) return respond({error: "Permission not created!"});
         respond(null, permission);
     }
 
-    @MessagePattern({ cmd: 'grant' })
+    @MessagePattern({ cmd: 'grantPermission' })
     public async grant(data, respond){
-        let permission = await this.db.findPermission(data.resource, data.level);
-        if(permission === undefined){
-            permission = await this.db.createPermission(data.resource, data.level);
+        try{
+            let permission = await this.db.findPermission(data.resource, data.level);
+            if(permission === undefined){
+                permission = await this.db.createPermission(data.resource, data.level);
+            }
+            if(permission === undefined) return respond({error: "Permission not found or created!"});
+
+            let isRole = (data.isRole === undefined ? false : data.isRole);
+
+            let permissionSet = await this.db.grantPermission(data.userId, permission.id, isRole);
+
+
+            console.log('responding with permission set', permissionSet);
+
+            respond(null, permissionSet);
+        } catch (error) {
+            respond(error);
         }
-        if(permission === undefined) return respond({error: "Permission not found or created!"});
+    }
 
-        let permissionSet = await this.db.grantPermission(data.userId, permission.id);
-
-        respond(null, permissionSet);
+    @MessagePattern({ cmd: 'permissionLike' })
+    public async permissionLike(data, respond){
+        let permissions = await this.db.findPermissions(data.resource, data.level);
+        respond(null, permissions);
     }
 
 }
