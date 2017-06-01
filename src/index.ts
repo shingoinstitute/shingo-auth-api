@@ -1,21 +1,24 @@
-import { NestFactory, Transport } from 'nest.js';
-import { ApplicationModule } from './app.module'
-import { MicroservicesModule } from './microservices.module';
-import * as express from 'express';
-import * as bodyParser from 'body-parser';
+import { AuthMicroservice } from './microservices/auth.microservice';
+import * as grpc from 'grpc';
 
-const server = express()
-server.use(bodyParser.json())
-server.use(bodyParser.urlencoded({extended: false}))
+const microservice = new AuthMicroservice();
+const port = process.env.PORT || 8888;
 
-let port = process.env.PORT || 3000
+let server = new grpc.Server();
+server.addService(microservice.authServices.AuthServices.service, {
+    login: microservice.login,
+    isValid: microservice.isValid,
+    createUser: microservice.createUser,
+    getUser: microservice.getUser,
+    updateUser: microservice.updateUser,
+    canAccess: microservice.canAccess,
+    createPermission: microservice.createPermission,
+    grantPermission: microservice.grantPermission,
+    createRole: microservice.createRole,
+    getRole: microservice.getRole,
+    getRoles: microservice.getRoles
+});
 
-
-const app = NestFactory.create(ApplicationModule, server);
-app.listen(port, () => console.log(`Salesforce API Application is listening on port ${port}`));
-
-const transport = Transport.REDIS;
-const url = process.env.REDIS_URL || 'redis://shingo-redis:6379'
-
-const ms = NestFactory.createMicroservice(MicroservicesModule, { transport, url, port: port + 1 });
-ms.listen(() => console.log(`Salesforce API Microservice is listening on port ${port + 1}`));
+server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
+server.start();
+console.log(`AuthMicroservice is listening on port ${port}.`)

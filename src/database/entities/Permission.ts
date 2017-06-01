@@ -21,7 +21,7 @@ export class Permission {
         cascadeUpdate: false
     })
     @JoinTable()
-    hasRole: Role[] = [];
+    roles: Role[] = [];
 
     @ManyToMany(type => User, user => user.permissions, {
         cascadeInsert: false,
