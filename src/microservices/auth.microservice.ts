@@ -1,5 +1,6 @@
 import * as grpc from 'grpc';
 import * as path from 'path';
+import { MySQLService } from '../database/mysql.service';
 import { UserService, PermissionService, RoleService } from '../shared';
 
 export class AuthMicroservice {
@@ -7,6 +8,7 @@ export class AuthMicroservice {
     public authServices;
 
     constructor(protoPath? : string){
+        MySQLService.init();
         if(protoPath === undefined) protoPath = path.join(__dirname, '../proto/auth_services.proto');
         this.authServices = grpc.load(protoPath).authservices;
     }
@@ -24,6 +26,7 @@ export class AuthMicroservice {
     }
 
     createUser(call, callback){
+        console.log('Creating users with request: ', call.request);        
         UserService.create(call.request)
             .then(user => callback(null, user))
             .catch(error => callback(error));

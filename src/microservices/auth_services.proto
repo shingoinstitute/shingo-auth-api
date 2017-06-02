@@ -40,10 +40,15 @@ message Credentials {
 
 message User {
     int32 id = 1;
-    string name = 2;
+    Auth auth = 2;
     string jwt = 3;
     repeated Permission permissions = 4;
     Role role = 5;
+}
+
+message Auth {
+    string email = 1;
+    bool isEnabled = 2;
 }
 
 message SimpleString {

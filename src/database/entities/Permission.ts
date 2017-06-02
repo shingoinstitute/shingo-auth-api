@@ -10,10 +10,10 @@ export class Permission {
     @PrimaryGeneratedColumn()
     id : number;
 
-    @Column()
+    @Column('text')
     resource : string;
     
-    @Column()
+    @Column('int')
     level: number; // 0 - deny, 1 - read, 2 - write
 
     @ManyToMany(type => Role, role => role.permissions, {

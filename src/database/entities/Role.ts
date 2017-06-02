@@ -8,7 +8,7 @@ export class Role {
     @PrimaryGeneratedColumn()
     id : number;
 
-    @Column()
+    @Column('text')
     name : string;
 
     @ManyToMany(type => Permission, permission => permission.roles, {

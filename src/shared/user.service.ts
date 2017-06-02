@@ -29,6 +29,10 @@ export class UserService {
 
         await MySQLService.connection.getRepository(User).persist(user);
 
+        delete auth.password;
+        delete auth.id;
+        delete auth.user;
+        user.auth = auth;
         return Promise.resolve(user);
     }
 
@@ -53,17 +57,23 @@ export class UserService {
         let authRepository = await MySQLService.connection.getRepository(Auth);
         let userRepository = await MySQLService.connection.getRepository(User);
 
-        let auth = new Auth();
+        let auth = await authRepository.findOne({ email: creds.username });
+        if(auth !== undefined) return Promise.reject({error: "EMAIL_IN_USER"});
+        auth = new Auth();
         auth.email = creds.username;
         auth.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
 
         let user = new User();
         user.auth = auth;
+        user.jwt = jwt.encode({user: user.id + ' '+ auth.email, expires: new Date(new Date().getTime() + 600000)}, MySQLService.jwtSecret);
         auth.user = user;
 
         await authRepository.persist(auth);
+
         await userRepository.persist(user);
 
+        delete user.auth.id;
+        delete user.auth.password;
         return Promise.resolve(user);
     }
 

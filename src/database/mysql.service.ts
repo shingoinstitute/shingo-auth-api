@@ -9,7 +9,7 @@ export class MySQLService{
 
     public static connection : Connection;
 
-    constructor(){
+    public static init(){
         if(MySQLService.connection === undefined){
             createConnection({driver: {
                     type: 'mysql',

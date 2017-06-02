@@ -10,20 +10,20 @@ if [ -z "$2" ]; then
     PORT=3001;
 fi
 
-if [ -z "$SF_CLIENT" ]; then
-    echo "Need the SF_CLIENT env variable to be defined..."
-    exit 1
-fi
+# if [ -z "$SF_CLIENT" ]; then
+#     echo "Need the SF_CLIENT env variable to be defined..."
+#     exit 1
+# fi
 
-if [ -z "$SF_SECRET" ]; then
-    echo "Need the SF_PASS env variable to be defined..."
-    exit 1
-fi
+# if [ -z "$SF_SECRET" ]; then
+#     echo "Need the SF_PASS env variable to be defined..."
+#     exit 1
+# fi
 
-if [ -z "$SF_CALLBACK" ]; then
-    echo "Need the SF_CALLBACK env variable to be defined..."
-    exit 1
-fi
+# if [ -z "$SF_CALLBACK" ]; then
+#     echo "Need the SF_CALLBACK env variable to be defined..."
+#     exit 1
+# fi
 
 docker build --tag shingo-auth-api:${TAG} .
 

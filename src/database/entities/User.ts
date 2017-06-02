@@ -9,7 +9,7 @@ export class User {
     @PrimaryGeneratedColumn()
     id : number;
 
-    @Column('text')
+    @Column('string', { unique: true, length:  "255"})
     jwt : string;
 
     @ManyToOne(type => Role, role => role.users)

@@ -7,14 +7,14 @@ export class Auth {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
+    @Column('string', { unique: true, length: "255" })
     email: string;
 
-    @Column()
+    @Column('string', { unique: true, length: "255" })
     password: string;
 
-    @Column()
-    isEnabled: boolean = true;
+    @Column('boolean', { default: true })
+    isEnabled: boolean;
 
     @OneToOne(type => User, user => user.auth, {
         cascadeRemove: true
