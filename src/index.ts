@@ -10,10 +10,12 @@ server.addService(microservice.authServices.AuthServices.service, {
     isValid: microservice.isValid,
     createUser: microservice.createUser,
     getUser: microservice.getUser,
+    getUserByEmail: microservice.getUserByEmail,
     updateUser: microservice.updateUser,
     canAccess: microservice.canAccess,
     createPermission: microservice.createPermission,
     grantPermission: microservice.grantPermission,
+    removePermission: microservice.removePermission,
     createRole: microservice.createRole,
     getRole: microservice.getRole,
     getRoles: microservice.getRoles

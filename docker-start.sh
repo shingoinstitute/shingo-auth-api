@@ -41,15 +41,12 @@ docker build --tag shingo-auth-api:${TAG} .
 docker kill shingo-auth-api
 docker rm shingo-auth-api
 
-docker run -itd                 \
-    -e SF_USER=${SF_CLIENT}     \
-    -e SF_PASS=${SF_SECRET}     \
-    -e SF_ENV=${SF_CALLBACK}    \
-    -e MYSQL_AUTH_USER=${MYSQL_AUTH_USER} \
-    -e MYSQL_AUTH_PASS=${MYSQL_AUTH_PASS} \
-    -e MYSQL_AUTH_DB=${MYSQL_AUTH_DB} \
-    -e MYSQL_URL=${MYSQL_URL} \
-    --name shingo-auth-api      \
-    --network shingo-dev-net    \
-    --volume $(pwd):/code       \
+docker run -itd                             \
+    -e MYSQL_AUTH_USER=${MYSQL_AUTH_USER}   \
+    -e MYSQL_AUTH_PASS=${MYSQL_AUTH_PASS}   \
+    -e MYSQL_AUTH_DB=${MYSQL_AUTH_DB}       \
+    -e MYSQL_URL=${MYSQL_URL}               \
+    --name shingo-auth-api                  \
+    --network shingo-dev-net                \
+    --volume $(pwd):/code                   \
     shingo-auth-api:${TAG}

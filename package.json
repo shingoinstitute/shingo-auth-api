@@ -10,7 +10,7 @@
     "jwt-simple": "^0.5.1",
     "mysql": "^2.13.0",
     "scrypt": "^6.0.3",
-    "typeorm": "0.1.0-alpha.3"
+    "typeorm": "0.1.0-alpha.4"
   },
   "scripts": {
     "start": "nodemon -e ts  --exec \"npm run compile\"",

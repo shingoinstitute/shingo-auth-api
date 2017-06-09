@@ -15,6 +15,9 @@ export class User {
     @ManyToOne(type => Role, role => role.users)
     role : Role;
 
+    @Column('string')
+    services : string = "";
+
     @OneToOne(type => Auth, auth => auth.user, {
         cascadeAll: false
     })

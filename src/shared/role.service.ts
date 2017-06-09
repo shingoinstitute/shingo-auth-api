@@ -5,6 +5,8 @@ export class RoleService {
     static async create(role : Role) : Promise<Role> {
         let roleRepository = MySQLService.connection.getRepository(Role);
 
+        delete role.id;
+
         await roleRepository.persist(role);
 
         return Promise.resolve(role);

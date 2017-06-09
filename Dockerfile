@@ -8,4 +8,4 @@ ENV PORT=80
 
 EXPOSE 80
 
-ENTRYPOINT npm rebuild scrypt && npm start
+ENTRYPOINT npm install && npm rebuild scrypt && npm start

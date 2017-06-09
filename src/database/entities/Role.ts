@@ -11,6 +11,9 @@ export class Role {
     @Column('text')
     name : string;
 
+    @Column('string')
+    service : string = '';
+
     @ManyToMany(type => Permission, permission => permission.roles, {
         cascadeInsert: false,
         cascadeUpdate: false

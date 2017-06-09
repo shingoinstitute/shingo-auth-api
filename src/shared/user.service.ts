@@ -4,7 +4,8 @@ import * as jwt from 'jwt-simple';
 
 export interface Credentials {
     username : string,
-    password : string
+    password : string,
+    services? : string
 }
 
 export class UserService {
@@ -16,6 +17,7 @@ export class UserService {
             .leftJoinAndSelect('auth.user', 'user')
             .leftJoinAndSelect('user.permissions', 'permissions')
             .leftJoinAndSelect('user.role', 'role')
+            .leftJoinAndSelect('role.permissions', 'role.permissions')
             .where('auth.email=:email', {email: creds.username})
             .getOne();
 
@@ -30,7 +32,6 @@ export class UserService {
         await MySQLService.connection.getRepository(User).persist(user);
 
         delete auth.password;
-        delete auth.id;
         delete auth.user;
         user.auth = auth;
         return Promise.resolve(user);
@@ -58,13 +59,14 @@ export class UserService {
         let userRepository = await MySQLService.connection.getRepository(User);
 
         let auth = await authRepository.findOne({ email: creds.username });
-        if(auth !== undefined) return Promise.reject({error: "EMAIL_IN_USER"});
+        if(auth !== undefined) return Promise.reject({error: "EMAIL_IN_USE"});
         auth = new Auth();
         auth.email = creds.username;
         auth.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
 
         let user = new User();
         user.auth = auth;
+        user.services = creds.services;
         user.jwt = jwt.encode({user: user.id + ' '+ auth.email, expires: new Date(new Date().getTime() + 600000)}, MySQLService.jwtSecret);
         auth.user = user;
 
@@ -72,13 +74,19 @@ export class UserService {
 
         await userRepository.persist(user);
 
-        delete user.auth.id;
         delete user.auth.password;
+        delete user.auth.user;
         return Promise.resolve(user);
     }
 
     static async update(user : User) : Promise<boolean> {
         let userRepository = await MySQLService.connection.getRepository(User);
+
+        for(let key in user){
+            if(user.hasOwnProperty(key) && user[key] == undefined || user[key] === '' || user[key] instanceof Array) delete user[key];
+        }
+
+        console.log('saving user: ', user);
 
         await userRepository.persist(user);
 
@@ -88,14 +96,29 @@ export class UserService {
     static async get(JWT : string) : Promise<User> {
         let userRepository = await MySQLService.connection.getRepository(User);
         
-        let user = userRepository.createQueryBuilder('user')
+        let user = await userRepository.createQueryBuilder('user')
             .leftJoinAndSelect('user.permissions', 'permissions')
             .leftJoinAndSelect ('user.role', 'role')
-            .leftJoinAndSelect('role.permissions', 'rolePermissions')
             .where('user.jwt=:jwt', {jwt:JWT})
             .getOne();
 
         if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
+        return Promise.resolve(user);
+    }
+
+    static async getByEmail(email : string) : Promise<User> {
+        let userRepository = await MySQLService.connection.getRepository(User);
+        
+        let user = await userRepository.createQueryBuilder('user')
+            .leftJoinAndSelect('user.permissions', 'permissions')
+            .leftJoinAndSelect ('user.role', 'role')
+            .leftJoinAndSelect('user.auth', 'auth')
+            .where('auth.email=:email', { email })
+            .getOne();
+
+        if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
+        delete user.auth.user;
+        delete user.auth.password;
         return Promise.resolve(user);
     }
 }

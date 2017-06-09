@@ -25,11 +25,26 @@ export class PermissionService {
     static async canAccess(accessRequest : AccessRequest) : Promise<boolean> {
         let permission = await PermissionService.get(accessRequest.resource, accessRequest.level);
 
-        let user = permission.users.find(user => { return user.jwt === accessRequest.jwt });
-        if(user === undefined) return Promise.reject({error: "USER_HAS_NO_PERMISSION"});
-        user.permissions.forEach(p => {
-            if(p.resource === accessRequest.resource && p.level === 0) return Promise.reject({error: "USER_DENIED_PERMISSION_"});
-        });
+        if(permission === undefined) return Promise.reject({error: "PERMISSION_DNE"});
+
+        let user = await UserService.get(accessRequest.jwt);
+        let role = permission.roles.find(r =>{ return r.id === user.role.id });
+        user = permission.users.find(u => { return u.id === user.id });
+        if(user === undefined && role === undefined) return Promise.reject({error: "USER_HAS_NO_PERMISSION"});
+
+        if(user !== undefined){
+            let valid = await UserService.isValid(user.jwt);
+            if(!valid) return Promise.reject({error: 'INVALID_TOKEN'});
+            user.permissions.forEach(p => {
+                if(p.resource === accessRequest.resource && p.level === 0) return Promise.reject({error: "USER_DENIED_PERMISSION"});
+            });
+        }
+
+        if(role !== undefined){
+            role.permissions.forEach(p => {
+                if(p.resource === accessRequest.resource && p.level === 0) return Promise.reject({error: "ROLE_DENIED_PERMISSION"});
+            });
+        }
 
         return Promise.resolve(true);
     }
@@ -37,7 +52,9 @@ export class PermissionService {
     static async create(resource : string, level : number) : Promise<Permission>{
         let permissionRepository = MySQLService.connection.getRepository(Permission);
 
-        let permission = new Permission();
+        let permission = await PermissionService.get(resource, level);
+        if(permission != undefined) return Promise.resolve(permission);
+        permission = new Permission();
         permission.resource = resource;
         permission.level = level;
 
@@ -64,10 +81,10 @@ export class PermissionService {
         let permissionRepository = MySQLService.connection.getRepository(Permission);
 
         let permission = permissionRepository.createQueryBuilder('permission')
-                .leftJoinAndSelect('permission.users', 'user')
+                .leftJoinAndSelect('permission.users', 'users')
                 .leftJoinAndSelect('permission.roles', 'roles')
                 .where('permission.resource=:resource', { resource })
-                .andWhere('permission.level=:level',{ level })
+                .andWhere('permission.level=:level', { level })
                 .getOne();
 
         if(permission === undefined) return Promise.reject({error: "PERMISSION_NOT_FOUND"});
@@ -76,22 +93,19 @@ export class PermissionService {
     }
 
     static async grant(req : GrantRequest) : Promise<PermissionSet>{
+        console.log('DEBUG: PermissionService.grant() ', req);
         if(req.permissionId === undefined && (req.resource === undefined || req.level === undefined))
             return Promise.reject({error: "MISSING_FIELDS", fields: [{ or: ['permisssionId', 'resource && level']}]});
         
         let permissionRepository = MySQLService.connection.getRepository(Permission);
 
-        let permission;
-        if(req.permissionId) permission = await PermissionService.getById(req.permissionId);             
-        else {
-            try {
-                permission = await PermissionService.get(req.resource, req.level);
-            } catch (error) {
-                if(error.error = "PERMISSION_NOT_FOUND") permission = await PermissionService.create(req.resource, req.level);
-            }
-        }
+        let permission = await PermissionService.get(req.resource, req.level);
 
-        if(req.userId !== undefined){
+        if(permission === undefined) permission = await PermissionService.create(req.resource, req.level);
+
+        console.log('DEBUG: Beginning grant process for permission: ', permission);
+
+        if(req.userId !== 0){
             let userRepository = MySQLService.connection.getRepository(User);
             let user = await userRepository.createQueryBuilder('user')
                 .leftJoinAndSelect('user.permissions', 'permissions')
@@ -100,27 +114,50 @@ export class PermissionService {
             
             if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
 
+            delete user.role;
+            delete permission.roles;
+
             user.permissions.push(permission);
-            permission.users.push(user);
-            await permissionRepository.persist(permission);
             await userRepository.persist(user);
             return Promise.resolve({permissionId: permission.id, accessorId: user.id});
-        } else if(req.roleId !== undefined){
+        } else if(req.roleId !== 0){
             let roleRepository = MySQLService.connection.getRepository(Role);
             let role = await roleRepository.createQueryBuilder('role')
                 .leftJoinAndSelect('role.permissions', 'permissions')
                 .where('role.id=:id', {id: req.roleId})
                 .getOne();
 
+            console.log('DEBUG: Granting permission to role', role);
             if(role === undefined) return Promise.reject({error: "ROLE_NOT_FOUND"});
 
+            delete permission.users;
+
             role.permissions.push(permission);
-            permission.roles.push(role);
-            await permissionRepository.persist(permission);
             await roleRepository.persist(role);
             return Promise.resolve({permissionId: permission.id, accessorId: role.id});
         }
 
         return Promise.reject({error: "UNEXPECTED_STATE"});
+    }
+
+    static async remove(req : Permission) {
+        let permissionRepository = MySQLService.connection.getRepository(Permission);
+
+        let permissions = await permissionRepository.createQueryBuilder('permission')
+                .leftJoinAndSelect('permission.users', 'user')
+                .leftJoinAndSelect('permission.roles', 'roles')
+                .where('permission.resource=:resource', { resource: req.resource })
+                .andWhere('permission.level=:level', { level: req.level })
+                .getMany();
+
+        permissions.map(permission => {
+            permission.users = [];
+            permission.roles = [];
+        });
+
+        await permissionRepository.persist(permissions);
+        await permissionRepository.remove(permissions);
+
+        return Promise.resolve();
     }
 }

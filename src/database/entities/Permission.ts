@@ -10,7 +10,7 @@ export class Permission {
     @PrimaryGeneratedColumn()
     id : number;
 
-    @Column('text')
+    @Column('string')
     resource : string;
     
     @Column('int')
