@@ -143,6 +143,21 @@ export class AuthMicroservice {
             });
     }
 
+    revokePermission(call, callback){
+        PermissionService.revoke(call.request)
+            .then(permissionSet => callback(null, permissionSet))
+            .catch(error => {
+                console.error('Error in revokePermission(): ', error);
+                const metadata = new grpc.Metadata();
+                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
+                callback({
+                    code: grpc.status.INTERNAL,
+                    details: 'INTERNAL_ERROR',
+                    metadata: metadata
+                });
+            })
+    }
+
     removePermission(call, callback){
         PermissionService.remove(call.request)
             .then(() => callback(null, call.request))

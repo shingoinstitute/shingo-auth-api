@@ -111,7 +111,8 @@ export class PermissionService {
                 .leftJoinAndSelect('user.permissions', 'permissions')
                 .where('user.id=:id', {id: req.userId})
                 .getOne();
-            
+
+            console.log('DEBUG: Granting permission to user', user);            
             if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
 
             delete user.role;
@@ -130,9 +131,58 @@ export class PermissionService {
             console.log('DEBUG: Granting permission to role', role);
             if(role === undefined) return Promise.reject({error: "ROLE_NOT_FOUND"});
 
+            delete role.users;
             delete permission.users;
 
             role.permissions.push(permission);
+            await roleRepository.persist(role);
+            return Promise.resolve({permissionId: permission.id, accessorId: role.id});
+        }
+
+        return Promise.reject({error: "UNEXPECTED_STATE"});
+    }
+
+    static async revoke(req : GrantRequest) : Promise<PermissionSet> {
+        if(req.permissionId === undefined && (req.resource === undefined || req.level === undefined))
+            return Promise.reject({error: "MISSING_FIELDS", fields: [{ or: ['permisssionId', 'resource && level']}]});
+        
+        let permissionRepository = MySQLService.connection.getRepository(Permission);
+
+        let permission = await PermissionService.get(req.resource, req.level);
+
+        if(permission === undefined) return Promise.reject({error: 'PERMISSION_NOT_FOUND'});
+
+        console.log('DEBUG: Beginning revoke process for permission: ', permission);
+
+        if(req.userId !== 0){
+            let userRepository = MySQLService.connection.getRepository(User);
+            let user = await userRepository.createQueryBuilder('user')
+                .leftJoinAndSelect('user.permissions', 'permissions')
+                .where('user.id=:id', {id: req.userId})
+                .getOne();
+            
+            if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
+
+            delete user.role;
+            delete permission.roles;
+
+            user.permissions = user.permissions.filter(p => { return p.id != permission.id});
+            await userRepository.persist(user);
+            return Promise.resolve({permissionId: permission.id, accessorId: user.id});
+        } else if(req.roleId !== 0){
+            let roleRepository = MySQLService.connection.getRepository(Role);
+            let role = await roleRepository.createQueryBuilder('role')
+                .leftJoinAndSelect('role.permissions', 'permissions')
+                .where('role.id=:id', {id: req.roleId})
+                .getOne();
+
+            console.log('DEBUG: Revoking permission from role', role);
+            if(role === undefined) return Promise.reject({error: "ROLE_NOT_FOUND"});
+
+            delete role.users;
+            delete permission.users;
+
+            role.permissions = role.permissions.filter(p => { return p.id != permission.id});
             await roleRepository.persist(role);
             return Promise.resolve({permissionId: permission.id, accessorId: role.id});
         }

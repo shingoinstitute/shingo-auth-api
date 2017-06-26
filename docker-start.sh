@@ -38,6 +38,15 @@ docker build --tag shingo-auth-api:${TAG} .
 #     --network shingo-dev-net                                \
 #     redis redis-server
 
+# docker kill shingo-mysql-local
+# docker rm shingo-mysql-local
+
+# docker run -itd                                 \
+#     --name shingo-mysql-local                   \
+#     --volume /var/lib/mysql:/var/lib/mysql:rw   \
+#     --network shingo-dev-net                    \
+#     mysql:5.7
+
 docker kill shingo-auth-api
 docker rm shingo-auth-api
 

@@ -15,6 +15,7 @@ server.addService(microservice.authServices.AuthServices.service, {
     canAccess: microservice.canAccess,
     createPermission: microservice.createPermission,
     grantPermission: microservice.grantPermission,
+    revokePermission: microservice.revokePermission,
     removePermission: microservice.removePermission,
     createRole: microservice.createRole,
     getRole: microservice.getRole,
