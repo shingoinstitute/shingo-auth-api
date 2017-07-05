@@ -1,40 +1,60 @@
 import { Role, MySQLService } from '../database/mysql.service';
+import * as _ from 'lodash';
+
+const roleRepository = MySQLService.connection.getRepository(Role);
 
 export class RoleService {
 
     static async create(role : Role) : Promise<Role> {
-        let roleRepository = MySQLService.connection.getRepository(Role);
+        role = _.omit(role, [
+            'id'
+        ]);
 
-        delete role.id;
+        try {
+            await roleRepository.persist(role);
 
-        await roleRepository.persist(role);
-
-        return Promise.resolve(role);
+            return Promise.resolve(role);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
-    static async get(name : string) : Promise<Role> {
-        let roleRepository = MySQLService.connection.getRepository(Role);
+    static async read(clause : string) : Promise<Role[]> {
+        try {
+            let roles = await roleRepository.createQueryBuilder('role')
+                .leftJoinAndSelect('role.permissions', 'permissions')
+                .leftJoinAndSelect('role.users', 'users')
+                .where(clause)
+                .getMany();
 
-        let role = roleRepository.createQueryBuilder('role')
-            .leftJoinAndSelect('role.users', 'users')
-            .leftJoinAndSelect('role.permissions', 'permissions')
-            .where('role.name=:name', { name })
-            .getOne();
-
-        if(role === undefined) return Promise.reject({error: "ROLE_NOT_FOUND"});
-
-        return Promise.resolve(role);
+            return Promise.resolve(roles);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
-    static async getAll(filter : string) : Promise<[Role[], number]> {
-        let roleRepository = MySQLService.connection.getRepository(Role);
+    static async update(role : Role) : Promise<boolean> {
+        let update = _.omit(role, [
+            'permissions',
+            'users'
+        ]);
 
-        let roles = await roleRepository.createQueryBuilder('role')
-            .leftJoinAndSelect('role.users', 'users')
-            .leftJoinAndSelect('role.permissions', 'permissions')
-            .where(filter)
-            .getManyAndCount();
+        try {
+            await roleRepository.persist(role);
 
-        return Promise.resolve(roles);
+            return Promise.resolve(true);
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
+    static async delete(role : Role) : Promise<boolean> {
+        try {
+            await roleRepository.removeById(role.id);
+
+            return Promise.resolve(true);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 }

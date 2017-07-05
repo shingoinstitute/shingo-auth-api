@@ -1,7 +1,29 @@
 import * as grpc from 'grpc';
 import * as path from 'path';
 import { MySQLService } from '../database/mysql.service';
-import { UserService, PermissionService, RoleService } from '../shared';
+import { UserService, PermissionService, RoleService, AuthService } from '../shared';
+
+function errorHandler(error, callback, message) {
+    console.error(message, error);    
+    const metadata = new grpc.Metadata();
+    metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
+    callback({
+        code: grpc.status.INTERNAL,
+        details: 'INTERNAL_ERROR',
+        metadata: metadata
+    });
+}
+
+function streamErrorHandler(error, call, message) {
+    console.error(message, error);                    
+    const metadata = new grpc.Metadata();
+    metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
+    call.error({
+        code: grpc.status.INTERNAL,
+        details: 'INTERNAL_ERROR',
+        metadata: metadata
+    });
+}
 
 export class AuthMicroservice {
 
@@ -13,208 +35,143 @@ export class AuthMicroservice {
         this.authServices = grpc.load(protoPath).authservices;
     }
 
-    login(call, callback){
-        UserService.login(call.request)
-            .then(user => callback(null, user))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INVALID_LOGIN',
-                    metadata: metadata
-                });
-            });
-    }
-
-    isValid(call, callback){
-        UserService.isValid(call.request.value)
-            .then(valid => callback(null, valid))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
-    }
-
+    /****************
+     * UserServices *
+     ***************/
+    // Create a new user
     createUser(call, callback){
-        console.log('Creating users with request: ', call.request);        
         UserService.create(call.request)
             .then(user => callback(null, user))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.createUser(): '));
     }
 
+    // Get a list of users based on a TypeORM query
+    readUser(call){
+        UserService.read(call.request)
+            .then(users => {
+                users.forEach(user => call.write(user));
+                call.end();
+            })
+            .catch(error => streamErrorHandler(error, call, 'Error in Authmicroservice.readUser(): '));
+    }
+
+    // Update a user (requires user.id)
     updateUser(call, callback){
         UserService.update(call.request)
             .then(updated => callback(null, updated))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.updateUser(): '));
     }
 
-    getUser(call, callback){
-        UserService.get(call.request.value)
-            .then(user => callback(null, user))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
+    // Delete a user (requires user.id)
+    deleteUser(call, callback){
+        UserService.delete(call.request)
+            .then(deleted => callback(null, deleted))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.deleteUser(): '));
     }
 
-    getUserByEmail(call, callback){
-        UserService.getByEmail(call.request.value)
-            .then(user => callback(null, user))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
-    }
-
-    canAccess(call, callback){
-        PermissionService.canAccess(call.request)
-            .then(valid => callback(null, valid))
-            .catch(error => {
-                console.error('Error in canAccess(): ', error);
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
-    }
-
+    /**********************
+     * PermissionServices *
+     *********************/
+    // Create a new permission
     createPermission(call, callback){
-        let req = call.request;
-        PermissionService.create(req.resource, req.level)
+        PermissionService.create(call.request)
             .then(permission => callback(null, permission))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.createPermission(): '));
     }
 
-    grantPermission(call, callback){
-        PermissionService.grant(call.request)
-            .then(permissionSet => callback(null, permissionSet))
-            .catch(error => {
-                console.error('Error in grantPermission(): ', error);
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
-    }
-
-    revokePermission(call, callback){
-        PermissionService.revoke(call.request)
-            .then(permissionSet => callback(null, permissionSet))
-            .catch(error => {
-                console.error('Error in revokePermission(): ', error);
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
+    // Get a list of permissions based on a TypeORM query
+    readPermission(call){
+        PermissionService.read(call.request)
+            .then(permissions => {
+                permissions.forEach(permission => call.write(permission));
+                call.end();
             })
+            .catch(error => streamErrorHandler(error, call, 'Error in Authmicroservice.readPermission(): '));
     }
 
-    removePermission(call, callback){
-        PermissionService.remove(call.request)
-            .then(() => callback(null, call.request))
-            .catch(error => {
-                console.error('Error in removePermission(): ', error);
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
+    // Update a permission (requires permission.id)
+    updatePermission(call, callback){
+        PermissionService.update(call.request)
+            .then(updated => callback(null, updated))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.updatePermission(): '));
     }
 
+    // Delete a permission (requires permission.id)
+    deletePermission(call, callback){
+        PermissionService.delete(call.request)
+            .then(deleted => callback(null, deleted))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.deletePermission(): '));
+    }
+
+    /****************
+     * RoleServices *
+     ***************/
+    // Create a new Role
     createRole(call, callback){
         RoleService.create(call.request)
             .then(role => callback(null, role))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.createRole(): '));
     }
 
-    getRole(call, callback){
-        RoleService.get(call.request.value)
-            .then(role => callback(null, role))
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                callback({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
-    }
-
-    getRoles(call){
-        RoleService.getAll(call.request.filter)
+    // Get a list of roles based on a TypeORM query
+    readRole(call){
+        RoleService.read(call.request)
             .then(roles => {
                 roles.forEach(role => call.write(role));
                 call.end();
             })
-            .catch(error => {
-                const metadata = new grpc.Metadata();
-                metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-                call.error({
-                    code: grpc.status.INTERNAL,
-                    details: 'INTERNAL_ERROR',
-                    metadata: metadata
-                });
-            });
+            .catch(error => streamErrorHandler(error, call, 'Error in Authmicroservice.readRole(): '));
+    }
+
+    // Update a role (requires role.id)
+    updateRole(call, callback){
+        RoleService.update(call.request)
+            .then(updated => callback(null, updated))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.updateRole(): '));
+    }
+
+    // Delete a role (requires role.id)
+    deleteRole(call, callback){
+        RoleService.delete(call.request)
+            .then(deleted => callback(null, deleted))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.deleteRole(): '));
+    }
+
+    /****************
+     * AuthServices *
+     ***************/
+    // Login a user based on email and password
+    login(call, callback){
+        AuthService.login(call.request)
+            .then(user => callback(null, user))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.login(): '));
+    }
+
+    // Checks if JSON Web Token is valid
+    isValid(call, callback){
+        AuthService.isValid(call.request)
+            .then(isValid => callback(null, isValid))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.isValid(): '));
+    }
+
+    // Checks if user (via JWT) has permissions for resource at requested level
+    canAccess(call, callback){
+        AuthService.canAccess(call.request)
+            .then(canAccess => callback(null, canAccess))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.canAccess(): '));
+    }
+
+    // Grants permission to user
+    grantPermissionToUser(call, callback){
+        AuthService.grantToUser(call.request)
+            .then(permissionSet => callback(null, permissionSet))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.grantPermissionToUser(): '));
+    }
+
+    // Grants permission to role
+    grantPermissionToRole(call, callback){
+        AuthService.grantToRole(call.request)
+            .then(permissionSet => callback(null, permissionSet))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.grantPermissionToRole(): '));
     }
 }

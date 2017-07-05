@@ -6,20 +6,23 @@ const port = process.env.PORT || 8888;
 
 let server = new grpc.Server();
 server.addService(microservice.authServices.AuthServices.service, {
+    createUser: microservice.createUser,
+    readUser: microservice.readUser,
+    updateUser: microservice.updateUser,
+    deleteUser: microservice.deleteUser,
+    createPermission: microservice.createPermission,
+    readPermission: microservice.readPermission,
+    updatePermission: microservice.updatePermission,
+    deletePermission: microservice.deletePermission,
+    createRole: microservice.createRole,
+    readRole: microservice.readRole,
+    updateRole: microservice.updateRole,
+    deleteRole: microservice.deleteRole,
     login: microservice.login,
     isValid: microservice.isValid,
-    createUser: microservice.createUser,
-    getUser: microservice.getUser,
-    getUserByEmail: microservice.getUserByEmail,
-    updateUser: microservice.updateUser,
     canAccess: microservice.canAccess,
-    createPermission: microservice.createPermission,
-    grantPermission: microservice.grantPermission,
-    revokePermission: microservice.revokePermission,
-    removePermission: microservice.removePermission,
-    createRole: microservice.createRole,
-    getRole: microservice.getRole,
-    getRoles: microservice.getRoles
+    grantPermissionToUser: microservice.grantPermissionToUser,
+    grantPermissionToRole: microservice.grantPermissionToRole
 });
 
 server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());

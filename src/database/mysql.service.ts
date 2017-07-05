@@ -1,7 +1,7 @@
 import { createConnection, Connection } from 'typeorm';
-import { Auth, Permission, Role, User, Level } from './entities';
+import { Permission, Role, User, Level } from './entities';
 
-export { Auth, Permission, Role, User, Level };
+export { Permission, Role, User, Level };
 
 export class MySQLService{
 
@@ -20,12 +20,11 @@ export class MySQLService{
                     database: process.env.MYSQL_AUTH_DB || 'authDb'
                 },
                 entities: [
-                    Auth,
                     Permission,
                     Role,
                     User
                 ],
-                autoSchemaSync: true
+                autoSchemaSync: process.env.NODE_ENV !== 'production'
             }).then(connection => {
                 MySQLService.connection = connection;
             }).catch(error => console.error(error))

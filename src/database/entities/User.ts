@@ -1,6 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, ManyToOne, OneToOne, JoinColumn } from 'typeorm'
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm'
 import { Role } from './Role'
-import { Auth } from './Auth'
 import { Permission } from './Permission'
 
 @Entity()
@@ -9,20 +8,26 @@ export class User {
     @PrimaryGeneratedColumn()
     id : number;
 
+    @Column('string', { unique: true, length: "255" })
+    email: string;
+
+    @Column('string', { unique: true, length: "255" })
+    password: string;
+
+    @Column('boolean', { default: true })
+    isEnabled: boolean;
+
     @Column('string', { unique: true, length:  "255"})
     jwt : string;
 
-    @ManyToOne(type => Role, role => role.users)
-    role : Role;
-
-    @Column('string')
-    services : string = "";
-
-    @OneToOne(type => Auth, auth => auth.user, {
-        cascadeAll: false
+    @ManyToMany(type => Role, role => role.users, {
+        cascadeInsert: false,
+        cascadeUpdate: false
     })
-    @JoinColumn()
-    auth : Auth;
+    roles : Role[] = [];
+
+    @Column('string', { default: "" })
+    services : string;
 
     @ManyToMany(type => Permission, permission => permission.users, {
         cascadeInsert: false,

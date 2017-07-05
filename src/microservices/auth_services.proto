@@ -9,33 +9,39 @@ package authservices;
 
 service AuthServices {
 
-    rpc Login(Credentials) returns (User) {}
-
-    rpc IsValid(SimpleString) returns (SimpleBoolean) {}
-
     rpc CreateUser(Credentials) returns (User) {}
 
-    rpc GetUser(SimpleString) returns (User) {}
+    rpc ReadUser(string) returns (stream User) {}
 
-    rpc GetUserByEmail(SimpleString) returns (User) {}
+    rpc UpdateUser(User) returns (bool) {}
 
-    rpc UpdateUser(User) returns (SimpleBoolean) {}
-    
-    rpc CanAccess(AccessRequest) returns (SimpleBoolean) {}
+    rpc DeleteUser(User) returns (bool) {}
 
     rpc CreatePermission(Permission) returns (Permission) {}
 
-    rpc GrantPermission(GrantRequest) returns (PermissionSet) {}
+    rpc ReadPermission(string) returns (stream Permission) {}
 
-    rpc RevokePermission(GrantRequest) returns (PermissionSet) {}
+    rpc UpdatePermission(Permission) returns (bool) {}
 
-    rpc RemovePermission(Permission) returns (Permission) {}
+    rpc DeletePermission(Permission) returns (bool) {}
 
     rpc CreateRole(Role) returns (Role) {}
 
-    rpc GetRole(SimpleString) returns (Role) {}
+    rpc ReadRole(string) returns (stream Role) {}
 
-    rpc GetRoles(FilterOptions) returns (stream Role) {}
+    rpc UpdateRole(Role) returns (bool) {}
+
+    rpc DeleteRole(Role) returns (bool) {}
+
+    rpc Login(Credentials) returns (User) {}
+
+    rpc IsValid(string) returns (bool) {}
+    
+    rpc CanAccess(AccessRequest) returns (bool) {}
+
+    rpc GrantPermissionToUser(GrantRequest) returns (PermissionSet) {}
+
+    rpc GrantPermissionToRole(GrantRequest) returns (PermissionSet) {}
 
 }
 
@@ -47,31 +53,19 @@ message Credentials {
 
 message User {
     int32 id = 1;
-    Auth auth = 2;
+    string email = 2;
     string jwt = 3;
-    repeated Permission permissions = 4;
-    Role role = 5;
-    string services = 6;
-}
-
-message Auth {
-    string email = 1;
-    bool isEnabled = 2;
-    int32 id = 3;
-}
-
-message SimpleString {
-    string value = 1;
-}
-
-message SimpleBoolean {
-    bool value = 1;
+    string services = 4;
+    repeated Permission permissions = 5;
+    Role role = 6;
+    bool isEnabled = 7;
 }
 
 message AccessRequest {
     string resource = 1;
     int32 level = 2;
     string jwt = 3;
+    string id = 4;
 }
 
 message Role {
@@ -91,18 +85,12 @@ message Permission {
 }
 
 message GrantRequest {
-    int32 permissionid = 1;
-    string resource = 2;
-    int32 level = 3;
-    int32 userId = 4;
-    int32 roleId = 5;
+    string resource = 1;
+    int32 level = 2;
+    int32 accessorId = 3;
 }
 
 message PermissionSet {
     int32 permissionId = 1;
     int32 accessorId = 2;
-}
-
-message FilterOptions {
-    string clause = 1;
 }

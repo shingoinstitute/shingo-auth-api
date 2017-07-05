@@ -1,124 +1,72 @@
-import { Auth, User, MySQLService } from '../database/mysql.service';
+import { User, MySQLService } from '../database/mysql.service';
 import * as scrypt from 'scrypt';
 import * as jwt from 'jwt-simple';
+import * as _ from 'lodash';
+
+
+const userRepository = MySQLService.connection.getRepository(User);
 
 export interface Credentials {
-    username : string,
+    email : string,
     password : string,
     services? : string
 }
 
 export class UserService {
 
-    // Login a user if they have credentials
-    static async login(creds : Credentials) : Promise<User> {
-        const authRepository = MySQLService.connection.getRepository(Auth);
-        let auth = await authRepository.createQueryBuilder('auth')
-            .leftJoinAndSelect('auth.user', 'user')
-            .leftJoinAndSelect('user.permissions', 'permissions')
-            .leftJoinAndSelect('user.role', 'role')
-            .leftJoinAndSelect('role.permissions', 'role.permissions')
-            .where('auth.email=:email', {email: creds.username})
-            .getOne();
-
-        if(auth === undefined) return Promise.reject({error: "EMAIL_NOT_FOUND"});
-
-        const matches = await scrypt.verifyKdf(new Buffer(auth.password, "base64"), creds.password);
-        if(!matches) return Promise.reject({error: "INVALID_PASSWORD"});
-
-        let user = auth.user;
-        user.jwt = jwt.encode({user: user.id + ' '+ auth.email, expires: new Date(new Date().getTime() + 600000)}, MySQLService.jwtSecret);
-
-        await MySQLService.connection.getRepository(User).persist(user);
-
-        delete auth.password;
-        delete auth.user;
-        user.auth = auth;
-        return Promise.resolve(user);
-    }
-
-    static async isValid(JWT : string) : Promise<boolean> {
-        let userRepository = await MySQLService.connection.getRepository(User);
-
-        let user = await userRepository.createQueryBuilder('user')
-            .leftJoinAndSelect('user.auth', 'auth')
-            .where('user.jwt=:jwt', {jwt: JWT})
-            .getOne();
-
-        if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
-
-        let decoded = jwt.decode(user.jwt, MySQLService.jwtSecret);
-        if(decoded.user != user.id + ' ' + user.auth.email) return Promise.reject(false);
-        if(new Date(decoded.expires) <= new Date()) return Promise.reject(false);
-        
-        return Promise.resolve(true);
-    }
-
     static async create(creds : Credentials) : Promise<User> {
-        let authRepository = await MySQLService.connection.getRepository(Auth);
-        let userRepository = await MySQLService.connection.getRepository(User);
-
-        let auth = await authRepository.findOne({ email: creds.username });
-        if(auth !== undefined) return Promise.reject({error: "EMAIL_IN_USE"});
-        auth = new Auth();
-        auth.email = creds.username;
-        auth.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
-
         let user = new User();
-        user.auth = auth;
+        user.email = creds.email;
+        user.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
         user.services = creds.services;
-        user.jwt = jwt.encode({user: user.id + ' '+ auth.email, expires: new Date(new Date().getTime() + 600000)}, MySQLService.jwtSecret);
-        auth.user = user;
 
-        await authRepository.persist(auth);
+        try {
+            await userRepository.persist(user);
+            user = _.omit(user, [ 'password' ]);
+            return Promise.resolve(user);
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
 
-        await userRepository.persist(user);
+    static async read(clause : string) : Promise<User[]> {
+        try{
+            let users = await userRepository.createQueryBuilder('user')
+                .leftJoinAndSelect('user.permissions', 'permissions')
+                .leftJoinAndSelect('user.roles', 'roles')
+                .leftJoinAndSelect('roles.permissions', 'roles.permissions')
+                .where(clause)
+                .getMany();
 
-        delete user.auth.password;
-        delete user.auth.user;
-        return Promise.resolve(user);
+            return Promise.resolve(users);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     static async update(user : User) : Promise<boolean> {
-        let userRepository = await MySQLService.connection.getRepository(User);
+        let update = _.omit(user, [
+            'permissions',
+            'roles',
+            'password'
+        ]);
 
-        for(let key in user){
-            if(user.hasOwnProperty(key) && user[key] == undefined || user[key] === '' || user[key] instanceof Array) delete user[key];
+        if(user.password) update.password = scrypt.kdfSync(user.password, scrypt.paramsSync(0.1)).toString("base64");
+
+        try {
+            await userRepository.persist(update);
+            return Promise.resolve(true);
+        } catch (error) {
+            return Promise.reject(error);
         }
-
-        console.log('saving user: ', user);
-
-        await userRepository.persist(user);
-
-        return Promise.resolve(true);
     }
 
-    static async get(JWT : string) : Promise<User> {
-        let userRepository = await MySQLService.connection.getRepository(User);
-        
-        let user = await userRepository.createQueryBuilder('user')
-            .leftJoinAndSelect('user.permissions', 'permissions')
-            .leftJoinAndSelect ('user.role', 'role')
-            .where('user.jwt=:jwt', {jwt:JWT})
-            .getOne();
-
-        if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
-        return Promise.resolve(user);
+    static async delete(user : User) : Promise<boolean> {
+        try {
+            await userRepository.removeById(user.id);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
-    static async getByEmail(email : string) : Promise<User> {
-        let userRepository = await MySQLService.connection.getRepository(User);
-        
-        let user = await userRepository.createQueryBuilder('user')
-            .leftJoinAndSelect('user.permissions', 'permissions')
-            .leftJoinAndSelect ('user.role', 'role')
-            .leftJoinAndSelect('user.auth', 'auth')
-            .where('auth.email=:email', { email })
-            .getOne();
-
-        if(user === undefined) return Promise.reject({error: "USER_NOT_FOUND"});
-        delete user.auth.user;
-        delete user.auth.password;
-        return Promise.resolve(user);
-    }
 }
