@@ -6,10 +6,6 @@ import * as scrypt from 'scrypt';
 import * as _ from 'lodash';
 import * as jwt from 'jwt-simple';
 
-const permissionRepository = MySQLService.connection.getRepository(Permission);
-const userRepository = MySQLService.connection.getRepository(User);
-const roleRepository = MySQLService.connection.getRepository(Role);
-
 export interface AccessRequest {
     resource : string,
     level : number,
@@ -80,11 +76,10 @@ export class AuthService {
     static async grantToUser(grantRequest : GrantRequest) : Promise<PermissionSet> {
         try {
             let permission = PermissionService.read(`permission.resource=${grantRequest.resource} AND permission.level=${grantRequest.level}`)[0];
-            let user = UserService.read(`user.id=${grantRequest.accessorId}`)[0];
-            permission.users.push(user);
+            permission.users.push({ id: grantRequest.accessorId });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['roles']));
 
-            return Promise.resolve({ permissionId : permission.id, accessorId: user.id });
+            return Promise.resolve({ permissionId : permission.id, accessorId: grantRequest.accessorId });
         } catch(error) {
             return Promise.resolve(error);
         }
@@ -93,11 +88,10 @@ export class AuthService {
     static async grantToRole(grantRequest : GrantRequest) : Promise<PermissionSet> {
         try {
             let permission = PermissionService.read(`permission.resource=${grantRequest.resource} AND permission.level=${grantRequest.level}`)[0];
-            let role = RoleService.read(`role.id=${grantRequest.accessorId}`)[0];
-            permission.roles.push(role);
+            permission.roles.push({ id: grantRequest.accessorId });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['users']));
 
-            return Promise.resolve({ permissionId : permission.id, accessorId: role.id });
+            return Promise.resolve({ permissionId : permission.id, accessorId: grantRequest.accessorId });
         } catch(error) {
             return Promise.resolve(error);
         }

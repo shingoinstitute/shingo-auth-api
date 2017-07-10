@@ -1,13 +1,12 @@
 import { Permission, MySQLService } from '../database/mysql.service';
 import * as _ from 'lodash';
 
-const permissionRepository = MySQLService.connection.getRepository(Permission);
-
 export class PermissionService {
 
     static async create(permission : Permission) : Promise<Permission> {
+        const permissionRepository = MySQLService.connection.getRepository(Permission);
         
-        permission = _.omit(permission, [ 'id' ]);
+        if(permission.id) permission = _.omit(permission, [ 'id' ]);
 
         try {
             await permissionRepository.persist(permission);
@@ -19,6 +18,7 @@ export class PermissionService {
     }
 
     static async read(clause : string) : Promise<Permission[]> {
+        const permissionRepository = MySQLService.connection.getRepository(Permission);
         try {
             let permissions = await permissionRepository.createQueryBuilder('permission')
                 .leftJoinAndSelect('permission.users', 'users')
@@ -33,6 +33,7 @@ export class PermissionService {
     }
 
     static async update(permission : Permission) : Promise<boolean> {
+        const permissionRepository = MySQLService.connection.getRepository(Permission);
         let update = _.omit(permission, [
             'user',
             'roles'
@@ -48,6 +49,7 @@ export class PermissionService {
     }
 
     static async delete(permission : Permission) : Promise<boolean> {
+        const permissionRepository = MySQLService.connection.getRepository(Permission);
         try {
             await permissionRepository.removeById(permission.id);
 

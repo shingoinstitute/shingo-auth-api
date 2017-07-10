@@ -4,8 +4,6 @@ import * as jwt from 'jwt-simple';
 import * as _ from 'lodash';
 
 
-const userRepository = MySQLService.connection.getRepository(User);
-
 export interface Credentials {
     email : string,
     password : string,
@@ -15,6 +13,7 @@ export interface Credentials {
 export class UserService {
 
     static async create(creds : Credentials) : Promise<User> {
+        const userRepository = MySQLService.connection.getRepository(User);
         let user = new User();
         user.email = creds.email;
         user.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
@@ -30,6 +29,7 @@ export class UserService {
     }
 
     static async read(clause : string) : Promise<User[]> {
+        const userRepository = MySQLService.connection.getRepository(User);
         try{
             let users = await userRepository.createQueryBuilder('user')
                 .leftJoinAndSelect('user.permissions', 'permissions')
@@ -45,6 +45,7 @@ export class UserService {
     }
 
     static async update(user : User) : Promise<boolean> {
+        const userRepository = MySQLService.connection.getRepository(User);
         let update = _.omit(user, [
             'permissions',
             'roles',
@@ -62,8 +63,11 @@ export class UserService {
     }
 
     static async delete(user : User) : Promise<boolean> {
+        const userRepository = MySQLService.connection.getRepository(User);
         try {
             await userRepository.removeById(user.id);
+
+            return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);
         }

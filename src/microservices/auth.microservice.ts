@@ -47,7 +47,7 @@ export class AuthMicroservice {
 
     // Get a list of users based on a TypeORM query
     readUser(call){
-        UserService.read(call.request)
+        UserService.read(call.request.clause)
             .then(users => {
                 users.forEach(user => call.write(user));
                 call.end();
@@ -58,14 +58,14 @@ export class AuthMicroservice {
     // Update a user (requires user.id)
     updateUser(call, callback){
         UserService.update(call.request)
-            .then(updated => callback(null, updated))
+            .then(updated => callback(null, { response: updated }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.updateUser(): '));
     }
 
     // Delete a user (requires user.id)
     deleteUser(call, callback){
         UserService.delete(call.request)
-            .then(deleted => callback(null, deleted))
+            .then(deleted => callback(null, { response: deleted }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.deleteUser(): '));
     }
 
@@ -81,7 +81,7 @@ export class AuthMicroservice {
 
     // Get a list of permissions based on a TypeORM query
     readPermission(call){
-        PermissionService.read(call.request)
+        PermissionService.read(call.request.clause)
             .then(permissions => {
                 permissions.forEach(permission => call.write(permission));
                 call.end();
@@ -92,14 +92,14 @@ export class AuthMicroservice {
     // Update a permission (requires permission.id)
     updatePermission(call, callback){
         PermissionService.update(call.request)
-            .then(updated => callback(null, updated))
+            .then(updated => callback(null, { response: updated }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.updatePermission(): '));
     }
 
     // Delete a permission (requires permission.id)
     deletePermission(call, callback){
         PermissionService.delete(call.request)
-            .then(deleted => callback(null, deleted))
+            .then(deleted => callback(null, { response: deleted }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.deletePermission(): '));
     }
 
@@ -115,7 +115,7 @@ export class AuthMicroservice {
 
     // Get a list of roles based on a TypeORM query
     readRole(call){
-        RoleService.read(call.request)
+        RoleService.read(call.request.clause)
             .then(roles => {
                 roles.forEach(role => call.write(role));
                 call.end();
@@ -126,14 +126,14 @@ export class AuthMicroservice {
     // Update a role (requires role.id)
     updateRole(call, callback){
         RoleService.update(call.request)
-            .then(updated => callback(null, updated))
+            .then(updated => callback(null, { response: updated }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.updateRole(): '));
     }
 
     // Delete a role (requires role.id)
     deleteRole(call, callback){
         RoleService.delete(call.request)
-            .then(deleted => callback(null, deleted))
+            .then(deleted => callback(null, { response: deleted }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.deleteRole(): '));
     }
 
@@ -149,15 +149,15 @@ export class AuthMicroservice {
 
     // Checks if JSON Web Token is valid
     isValid(call, callback){
-        AuthService.isValid(call.request)
-            .then(isValid => callback(null, isValid))
+        AuthService.isValid(call.request.token)
+            .then(isValid => callback(null, { response: isValid }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.isValid(): '));
     }
 
     // Checks if user (via JWT) has permissions for resource at requested level
     canAccess(call, callback){
         AuthService.canAccess(call.request)
-            .then(canAccess => callback(null, canAccess))
+            .then(canAccess => callback(null, { response: canAccess }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.canAccess(): '));
     }
 

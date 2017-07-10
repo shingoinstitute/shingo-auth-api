@@ -1,12 +1,11 @@
 import { Role, MySQLService } from '../database/mysql.service';
 import * as _ from 'lodash';
 
-const roleRepository = MySQLService.connection.getRepository(Role);
-
 export class RoleService {
 
     static async create(role : Role) : Promise<Role> {
-        role = _.omit(role, [
+        const roleRepository = MySQLService.connection.getRepository(Role);
+        if(role.id) role = _.omit(role, [
             'id'
         ]);
 
@@ -20,6 +19,7 @@ export class RoleService {
     }
 
     static async read(clause : string) : Promise<Role[]> {
+        const roleRepository = MySQLService.connection.getRepository(Role);
         try {
             let roles = await roleRepository.createQueryBuilder('role')
                 .leftJoinAndSelect('role.permissions', 'permissions')
@@ -34,6 +34,7 @@ export class RoleService {
     }
 
     static async update(role : Role) : Promise<boolean> {
+        const roleRepository = MySQLService.connection.getRepository(Role);
         let update = _.omit(role, [
             'permissions',
             'users'
@@ -49,6 +50,7 @@ export class RoleService {
     }
 
     static async delete(role : Role) : Promise<boolean> {
+        const roleRepository = MySQLService.connection.getRepository(Role);
         try {
             await roleRepository.removeById(role.id);
 

@@ -11,38 +11,50 @@ service AuthServices {
 
     rpc CreateUser(Credentials) returns (User) {}
 
-    rpc ReadUser(string) returns (stream User) {}
+    rpc ReadUser(QueryRequest) returns (stream User) {}
 
-    rpc UpdateUser(User) returns (bool) {}
+    rpc UpdateUser(User) returns (BooleanResponse) {}
 
-    rpc DeleteUser(User) returns (bool) {}
+    rpc DeleteUser(User) returns (BooleanResponse) {}
 
     rpc CreatePermission(Permission) returns (Permission) {}
 
-    rpc ReadPermission(string) returns (stream Permission) {}
+    rpc ReadPermission(QueryRequest) returns (stream Permission) {}
 
-    rpc UpdatePermission(Permission) returns (bool) {}
+    rpc UpdatePermission(Permission) returns (BooleanResponse) {}
 
-    rpc DeletePermission(Permission) returns (bool) {}
+    rpc DeletePermission(Permission) returns (BooleanResponse) {}
 
     rpc CreateRole(Role) returns (Role) {}
 
-    rpc ReadRole(string) returns (stream Role) {}
+    rpc ReadRole(QueryRequest) returns (stream Role) {}
 
-    rpc UpdateRole(Role) returns (bool) {}
+    rpc UpdateRole(Role) returns (BooleanResponse) {}
 
-    rpc DeleteRole(Role) returns (bool) {}
+    rpc DeleteRole(Role) returns (BooleanResponse) {}
 
     rpc Login(Credentials) returns (User) {}
 
-    rpc IsValid(string) returns (bool) {}
+    rpc IsValid(UserJWT) returns (BooleanResponse) {}
     
-    rpc CanAccess(AccessRequest) returns (bool) {}
+    rpc CanAccess(AccessRequest) returns (BooleanResponse) {}
 
     rpc GrantPermissionToUser(GrantRequest) returns (PermissionSet) {}
 
     rpc GrantPermissionToRole(GrantRequest) returns (PermissionSet) {}
 
+}
+
+message QueryRequest {
+    string clause = 1;
+}
+
+message UserJWT {
+    string token = 1;
+}
+
+message BooleanResponse {
+    bool response = 2;
 }
 
 message Credentials {
