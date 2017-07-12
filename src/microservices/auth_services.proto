@@ -17,6 +17,10 @@ service AuthServices {
 
     rpc DeleteUser(User) returns (BooleanResponse) {}
 
+    rpc AddRoleToUser(RoleOperation) returns (BooleanResponse) {}
+
+    rpc RemoveRoleFromUser(RoleOperation) returns (BooleanResponse) {}
+
     rpc CreatePermission(Permission) returns (Permission) {}
 
     rpc ReadPermission(QueryRequest) returns (stream Permission) {}
@@ -43,6 +47,10 @@ service AuthServices {
 
     rpc GrantPermissionToRole(GrantRequest) returns (PermissionSet) {}
 
+    rpc RevokePermissionFromUser(GrantRequest) returns (PermissionSet) {}
+
+    rpc RevokePermissionFromRole(GrantRequest) returns (PermissionSet) {}
+
 }
 
 message QueryRequest {
@@ -58,7 +66,7 @@ message BooleanResponse {
 }
 
 message Credentials {
-    string username = 1;
+    string email = 1;
     string password = 2;
     string services = 3;
 }
@@ -69,8 +77,9 @@ message User {
     string jwt = 3;
     string services = 4;
     repeated Permission permissions = 5;
-    Role role = 6;
+    repeated Role roles = 6;
     bool isEnabled = 7;
+    string password = 8;
 }
 
 message AccessRequest {
@@ -105,4 +114,9 @@ message GrantRequest {
 message PermissionSet {
     int32 permissionId = 1;
     int32 accessorId = 2;
+}
+
+message RoleOperation {
+    string userEmail = 1;
+    int32 roleId = 2;
 }

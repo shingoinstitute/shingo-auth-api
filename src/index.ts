@@ -10,6 +10,8 @@ server.addService(microservice.authServices.AuthServices.service, {
     readUser: microservice.readUser,
     updateUser: microservice.updateUser,
     deleteUser: microservice.deleteUser,
+    addRoleToUser: microservice.addRoleToUser,
+    removeRoleFromUser: microservice.removeRoleFromUser,
     createPermission: microservice.createPermission,
     readPermission: microservice.readPermission,
     updatePermission: microservice.updatePermission,
@@ -22,7 +24,9 @@ server.addService(microservice.authServices.AuthServices.service, {
     isValid: microservice.isValid,
     canAccess: microservice.canAccess,
     grantPermissionToUser: microservice.grantPermissionToUser,
-    grantPermissionToRole: microservice.grantPermissionToRole
+    grantPermissionToRole: microservice.grantPermissionToRole,
+    revokePermissionFromUser: microservice.revokePermissionFromUser,
+    revokePermissionFromRole: microservice.revokePermissionFromRole
 });
 
 server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());

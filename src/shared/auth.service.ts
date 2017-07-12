@@ -27,9 +27,14 @@ export class AuthService {
 
     static async login(creds : Credentials) : Promise<User> {
         try {
-            let user = await UserService.read(`user.email=${creds.email}`)[0];
+            console.log('Searching for user', creds);
+            let users = await UserService.read(`user.email='${creds.email}'`);
+            console.log('found: ', users);
+            let user = users[0];
+            if(user === undefined) return Promise.reject({error: 'EMAIL_NOT_FOUND'});
+
             const matches = await scrypt.verifyKdf(new Buffer(user.password, "base64"), creds.password);
-            if(!matches)return Promise.reject({ error: 'INVALID_PASSWORD' });
+            if(!matches) return Promise.reject({ error: 'INVALID_PASSWORD' });
 
             user = _.omit(user, ['password']);
 
@@ -45,11 +50,12 @@ export class AuthService {
 
     static async isValid(token : string) : Promise<boolean> {
         try {
-            let user = await UserService.read(`user.jwt=${token}`)[0];
+            let users = await UserService.read(`user.jwt='${token}'`);
+            let user = users[0];
             
             const decoded = jwt.decode(token, MySQLService.jwtSecret);
-            if(decoded != `${user.id} ${user.email}`) return Promise.reject(false);
-            if(new Date(decoded.expires) <= new Date()) return Promise.reject(false);
+            if(decoded.user != `${user.id} ${user.email}`) return Promise.resolve(false);
+            if(new Date(decoded.expires) <= new Date()) return Promise.resolve(false);
 
             return Promise.resolve(true);
         } catch (error) {
@@ -59,8 +65,15 @@ export class AuthService {
 
     static async canAccess(accessRequest : AccessRequest) : Promise<boolean> {
         try {
-            let user = await UserService.read(`user.jwt=${jwt}`)[0];
-            let permissions = user.permissions.append(user.role.permissions);
+            let users = await UserService.read(`user.jwt='${jwt}'`);
+            let user = users[0];
+            if(user === undefined) return Promise.resolve(false);
+            let permissions = user.permissions;
+
+            for(let role of user.roles){
+                permissions.concat(role.permissions);
+            }
+
             let canAccess = false;
             for(let permission of permissions) {
                 if(permission.resource === accessRequest.resource && permission.level >= accessRequest.level) canAccess = true;
@@ -75,25 +88,65 @@ export class AuthService {
 
     static async grantToUser(grantRequest : GrantRequest) : Promise<PermissionSet> {
         try {
-            let permission = PermissionService.read(`permission.resource=${grantRequest.resource} AND permission.level=${grantRequest.level}`)[0];
-            permission.users.push({ id: grantRequest.accessorId });
+            let permissions = await PermissionService.read(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`);
+            let permission = permissions[0];
+
+            if(permission === undefined) permission = await PermissionService.create({ resource: grantRequest.resource, level: grantRequest.level } as Permission);
+
+            permission.users.push({ id: grantRequest.accessorId } as User);
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['roles']));
 
             return Promise.resolve({ permissionId : permission.id, accessorId: grantRequest.accessorId });
         } catch(error) {
-            return Promise.resolve(error);
+            return Promise.reject(error);
         }
     }
 
     static async grantToRole(grantRequest : GrantRequest) : Promise<PermissionSet> {
         try {
-            let permission = PermissionService.read(`permission.resource=${grantRequest.resource} AND permission.level=${grantRequest.level}`)[0];
-            permission.roles.push({ id: grantRequest.accessorId });
+            let permissions = await PermissionService.read(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`);
+            let permission = permissions[0];
+
+            if(permission === undefined) permission = await PermissionService.create({ resource: grantRequest.resource, level: grantRequest.level } as Permission);
+
+            permission.roles.push({ id: grantRequest.accessorId } as Role);
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['users']));
 
             return Promise.resolve({ permissionId : permission.id, accessorId: grantRequest.accessorId });
         } catch(error) {
-            return Promise.resolve(error);
+            return Promise.reject(error);
+        }
+    }
+
+    static async revokeFromUser(grantRequest : GrantRequest) : Promise<PermissionSet> {
+        try {
+            let permissions = await PermissionService.read(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`);
+            let permission = permissions[0];
+
+            if(permission === undefined) return Promise.reject({error: "PERMISSION_NOT_FOUND"});
+
+            permission.users = permission.users.filter(user => { return user.id === grantRequest.accessorId; });
+            await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['roles']));
+
+            return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
+        } catch(error) {
+            return Promise.reject(error);
+        }
+    }
+
+    static async revokeFromRole(grantRequest : GrantRequest) : Promise<PermissionSet> {
+        try {
+            let permissions = await PermissionService.read(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`);
+            let permission = permissions[0];
+
+            if(permission === undefined) return Promise.reject({error: "PERMISSION_NOT_FOUND"});
+
+            permission.roles = permission.roles.filter(role => { return role.id === grantRequest.accessorId; });
+            await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['users']));
+
+            return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
+        } catch(error) {
+            return Promise.reject(error);
         }
     }
     

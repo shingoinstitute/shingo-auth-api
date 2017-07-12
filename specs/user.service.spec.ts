@@ -6,6 +6,8 @@ import { User } from '../src/database/entities';
 import { Connection, Repository, QueryBuilder } from 'typeorm';
 import * as _ from 'lodash';
 
+let testUser = {roles: [{id: 1}, {id: 2}], id: 1, email: 'test.user@example.com'} as User;
+
 class MockQueryBuilder extends QueryBuilder<User> {
     public leftJoinAndSelect(field : string, alias : string) : this {
         return this;
@@ -27,6 +29,11 @@ class MockQueryBuilder extends QueryBuilder<User> {
 
         return Promise.resolve(users);
     }
+
+    public getOne() : Promise<User> {
+        testUser.roles = testUser.roles.filter(role => { return role.id !== 1; });
+        return Promise.resolve(testUser);
+    }
 }
 
 class MockRepo extends Repository<User> {
@@ -39,6 +46,7 @@ class MockRepo extends Repository<User> {
         SpyOn(this.mockQueryBuilder, 'leftJoinAndSelect');
         SpyOn(this.mockQueryBuilder, 'where');
         SpyOn(this.mockQueryBuilder, 'getMany');
+        SpyOn(this.mockQueryBuilder, 'getOne');
     }
 
     public persist(user : User, options? : any) : Promise<User>;
@@ -147,6 +155,39 @@ export class UserServiceFixture {
         Expect(result).toBe(true);
         Expect(MySQLService.connection.getRepository(User).removeById)
             .toHaveBeenCalledWith(user.id);
+    }
+
+    @AsyncTest('Add a Role to a User')
+    public async addRole(){
+        let userEmail = 'test.user@example.com';
+        let roleId = 1;
+
+        const result = await UserService.addRole({ userEmail, roleId });
+        Expect(result).toBe(true);
+
+        const repo = MySQLService.connection.getRepository(User);
+        Expect(repo.persist).toHaveBeenCalledWith(testUser);
+        Expect(repo.createQueryBuilder).toHaveBeenCalledWith('user');
+        Expect(repo.createQueryBuilder('user').leftJoinAndSelect).toHaveBeenCalledWith('user.roles', 'roles');
+        Expect(repo.createQueryBuilder('user').where).toHaveBeenCalledWith(`user.email='${userEmail}'`);
+        Expect(repo.createQueryBuilder('user').getOne).toHaveBeenCalled().exactly(1).times;
+    }
+
+    @AsyncTest('Remove a Role from a User')
+    public async removeRole(){
+        let userEmail = 'test.user@example.com';
+        let roleId = 2;
+
+        const result = await UserService.removeRole({ userEmail, roleId });
+        Expect(result).toBe(true);
+
+        const repo = MySQLService.connection.getRepository(User);
+        testUser.roles = [];
+        Expect(repo.persist).toHaveBeenCalledWith(testUser);
+        Expect(repo.createQueryBuilder).toHaveBeenCalledWith('user');
+        Expect(repo.createQueryBuilder('user').leftJoinAndSelect).toHaveBeenCalledWith('user.roles', 'roles');
+        Expect(repo.createQueryBuilder('user').where).toHaveBeenCalledWith(`user.email='${userEmail}'`);
+        Expect(repo.createQueryBuilder('user').getOne).toHaveBeenCalled().exactly(1).times;
     }
 
 }

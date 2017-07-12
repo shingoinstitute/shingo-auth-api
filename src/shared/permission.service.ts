@@ -51,6 +51,7 @@ export class PermissionService {
     static async delete(permission : Permission) : Promise<boolean> {
         const permissionRepository = MySQLService.connection.getRepository(Permission);
         try {
+            if(!permission.id) permission = await permissionRepository.findOne({ resource: permission.resource, level: permission.level });
             await permissionRepository.removeById(permission.id);
 
             return Promise.resolve(true);

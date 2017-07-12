@@ -18,7 +18,7 @@ function streamErrorHandler(error, call, message) {
     console.error(message, error);                    
     const metadata = new grpc.Metadata();
     metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
-    call.error({
+    call.emit('error', {
         code: grpc.status.INTERNAL,
         details: 'INTERNAL_ERROR',
         metadata: metadata
@@ -30,9 +30,15 @@ export class AuthMicroservice {
     public authServices;
 
     constructor(protoPath? : string){
-        MySQLService.init();
         if(protoPath === undefined) protoPath = path.join(__dirname, '../proto/auth_services.proto');
         this.authServices = grpc.load(protoPath).authservices;
+        MySQLService.init()
+        .then(() => {
+            console.log('DB initialized');
+        })
+        .catch(error => {
+            console.error('Error initializing DB: ', error);
+        });
     }
 
     /****************
@@ -67,6 +73,20 @@ export class AuthMicroservice {
         UserService.delete(call.request)
             .then(deleted => callback(null, { response: deleted }))
             .catch(error => errorHandler(error, callback, 'Error in AuthMircoservice.deleteUser(): '));
+    }
+
+    // Add a role to a user (requires userId and roleId)
+    addRoleToUser(call, callback){
+        UserService.addRole(call.request)
+            .then(added => callback(null, { response: added }))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservice.addRoleToUser(): '));
+    }
+
+    // Remove a role from a user (requires userId and roleId)
+    removeRoleFromUser(call, callback){
+        UserService.removeRole(call.request)
+            .then(removed => callback(null, { response: removed }))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservice.removeRoleFromUser(): '));
     }
 
     /**********************
@@ -161,17 +181,31 @@ export class AuthMicroservice {
             .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.canAccess(): '));
     }
 
-    // Grants permission to user
+    // Grants permission to a user
     grantPermissionToUser(call, callback){
         AuthService.grantToUser(call.request)
             .then(permissionSet => callback(null, permissionSet))
             .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.grantPermissionToUser(): '));
     }
 
-    // Grants permission to role
+    // Grants permission to a role
     grantPermissionToRole(call, callback){
         AuthService.grantToRole(call.request)
             .then(permissionSet => callback(null, permissionSet))
             .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.grantPermissionToRole(): '));
+    }
+
+    // Revokes permission from a user
+    revokePermissionFromUser(call, callback){
+        AuthService.revokeFromUser(call.request)
+            .then(permissionSet => callback(null, permissionSet))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.revokePermissionFromUser(): '));
+    }
+
+    // Revokes permission from a role
+    revokePermissionFromRole(call, callback){
+        AuthService.revokeFromRole(call.request)
+            .then(permissionSet => callback(null, permissionSet))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.revokePermissionFromRole(): '));
     }
 }

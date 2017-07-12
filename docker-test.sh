@@ -13,5 +13,4 @@ docker run                                  \
     --volume $(pwd):/code                   \
     shingo-auth-api:test ${1}
 
-docker kill shingo-auth-api-test
 docker rm shingo-auth-api-test

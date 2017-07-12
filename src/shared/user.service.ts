@@ -10,6 +10,11 @@ export interface Credentials {
     services? : string
 }
 
+export interface RoleOperation {
+    userEmail : string,
+    roleId : number
+}
+
 export class UserService {
 
     static async create(creds : Credentials) : Promise<User> {
@@ -18,10 +23,13 @@ export class UserService {
         user.email = creds.email;
         user.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
         user.services = creds.services;
+        user.jwt = jwt.encode(`${user.id} ${user.email}`, MySQLService.jwtSecret);
 
         try {
             await userRepository.persist(user);
             user = _.omit(user, [ 'password' ]);
+            user.roles = [];
+            user.permissions = [];
             return Promise.resolve(user);
         } catch (error) {
             return Promise.reject(error);
@@ -67,6 +75,53 @@ export class UserService {
         try {
             await userRepository.removeById(user.id);
 
+            return Promise.resolve(true);
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
+    static async addRole(roleOp : RoleOperation) : Promise<boolean> {
+        const userEmail = roleOp.userEmail;
+        const roleId = roleOp.roleId;
+        const userRepository = MySQLService.connection.getRepository(User);
+
+        try {
+            let user = await userRepository.createQueryBuilder('user')
+                .leftJoinAndSelect('user.roles', 'roles')
+                .where(`user.email='${userEmail}'`)
+                .getOne();
+
+            if(user === undefined) return Promise.reject({error: 'EMAIL_NOT_FOUND'});
+
+            delete user.permissions;
+
+            user.roles.push(<any>{ id: roleId });
+            await userRepository.persist(user);
+            return Promise.resolve(true);
+        } catch(error) {
+            return Promise.reject(error);
+        }
+    }
+
+    static async removeRole(roleOp : RoleOperation) : Promise<boolean> {
+        const userEmail = roleOp.userEmail;
+        const roleId = roleOp.roleId;
+        
+        const userRepository = MySQLService.connection.getRepository(User);
+        try { 
+            let user = await userRepository.createQueryBuilder('user')
+                .leftJoinAndSelect('user.roles', 'roles')
+                .where(`user.email='${userEmail}'`)
+                .getOne();
+
+            if(user === undefined) return Promise.reject({error: 'EMAIL_NOT_FOUND'});
+
+            user.roles = user.roles.filter(role => { return role.id !== roleId; });
+
+            delete user.permissions;
+
+            await userRepository.persist(user);
             return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);
