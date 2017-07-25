@@ -26,6 +26,13 @@ class MockQueryBuilder extends QueryBuilder<Role> {
 
         return Promise.resolve(roles);
     }
+
+    public getOne() : Promise<Role> {
+        let role = new Role();
+        role.id = 1;
+        role.name = 'Test Role';
+        return Promise.resolve(role);
+    }
 }
 
 class MockRepo extends Repository<Role> {
@@ -38,6 +45,7 @@ class MockRepo extends Repository<Role> {
         SpyOn(this.mockQueryBuilder, 'leftJoinAndSelect');
         SpyOn(this.mockQueryBuilder, 'where');
         SpyOn(this.mockQueryBuilder, 'getMany');
+        SpyOn(this.mockQueryBuilder, 'getOne');
     }
 
     public persist(role : Role, options? : any) : Promise<Role>;
@@ -117,6 +125,23 @@ export class RoleServiceFixture {
         Expect(repo.createQueryBuilder('role').leftJoinAndSelect).toHaveBeenCalledWith('role.users', 'users');
         Expect(repo.createQueryBuilder('role').where).toHaveBeenCalledWith(clause);
         Expect(repo.createQueryBuilder('role').getMany).toHaveBeenCalled();
+    }
+
+    @AsyncTest('Read a role')
+    public async readOne(){
+        const clause = 'test=clause';
+        const result = await RoleService.readOne(clause);
+
+        Expect(result).toBeDefined();
+        Expect(result.id).toBe(1);
+
+        const repo = MySQLService.connection.getRepository(Role);
+        Expect(repo.createQueryBuilder).toHaveBeenCalledWith('role');
+        Expect(repo.createQueryBuilder('role').leftJoinAndSelect).toHaveBeenCalled().exactly(2).times;
+        Expect(repo.createQueryBuilder('role').leftJoinAndSelect).toHaveBeenCalledWith('role.permissions', 'permissions');
+        Expect(repo.createQueryBuilder('role').leftJoinAndSelect).toHaveBeenCalledWith('role.users', 'users');
+        Expect(repo.createQueryBuilder('role').where).toHaveBeenCalledWith(clause);
+        Expect(repo.createQueryBuilder('role').getOne).toHaveBeenCalled();
     }
 
     @AsyncTest('Update a role')

@@ -3,16 +3,17 @@ import { Permission, Role, User, Level } from './entities';
 
 export { Permission, Role, User, Level };
 
-export class MySQLService{
+export class MySQLService {
 
     public static jwtSecret = (process.env.JWT_SECRET || 'ilikecatz');
 
-    public static connection : Connection;
+    public static connection: Connection;
 
-    public static async init(){
-        if(MySQLService.connection === undefined){
+    public static async init() {
+        if (MySQLService.connection === undefined) {
             try {
-                MySQLService.connection = await createConnection({driver: {
+                MySQLService.connection = await createConnection({
+                    driver: {
                         type: 'mysql',
                         host: process.env.MYSQL_URL || 'localhost',
                         port: process.env.MYSQL_PORT || 3306,

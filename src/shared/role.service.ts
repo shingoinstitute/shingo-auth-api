@@ -33,6 +33,21 @@ export class RoleService {
         }
     }
 
+    static async readOne(clause : string) : Promise<Role> {
+        const roleRepository = MySQLService.connection.getRepository(Role);
+        try {
+            let role = await roleRepository.createQueryBuilder('role')
+                .leftJoinAndSelect('role.permissions', 'permissions')
+                .leftJoinAndSelect('role.users', 'users')
+                .where(clause)
+                .getOne();
+
+            return Promise.resolve(role);
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
     static async update(role : Role) : Promise<boolean> {
         const roleRepository = MySQLService.connection.getRepository(Role);
         let update = _.omit(role, [

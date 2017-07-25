@@ -27,6 +27,13 @@ class MockQueryBuilder extends QueryBuilder<Permission> {
 
         return Promise.resolve(permissions);
     }
+
+    public getOne() : Promise<Permission> {
+        let permission = new Permission();
+        permission.id = 1;
+        
+        return Promise.resolve(permission);
+    }
 }
 
 class MockRepo extends Repository<Permission> {
@@ -39,6 +46,7 @@ class MockRepo extends Repository<Permission> {
         SpyOn(this.mockQueryBuilder, 'leftJoinAndSelect');
         SpyOn(this.mockQueryBuilder, 'where');
         SpyOn(this.mockQueryBuilder, 'getMany');
+        SpyOn(this.mockQueryBuilder, 'getOne');
     }
 
     public persist(permission : Permission, options? : any) : Promise<Permission>;
@@ -118,6 +126,23 @@ export class PermissionServiceFixture {
         Expect(repo.createQueryBuilder('permission').leftJoinAndSelect).toHaveBeenCalledWith('permission.roles', 'roles');
         Expect(repo.createQueryBuilder('permission').where).toHaveBeenCalledWith(clause);
         Expect(repo.createQueryBuilder('permission').getMany).toHaveBeenCalled();
+    }
+
+    @AsyncTest('Read a permission')
+    public async readOne(){
+        const clause = 'test=clause';
+        const result = await PermissionService.readOne(clause);
+        
+        Expect(result).toBeDefined();
+        Expect(result.id).toBe(1);
+
+        const repo = MySQLService.connection.getRepository(Permission);
+        Expect(repo.createQueryBuilder).toHaveBeenCalledWith('permission');
+        Expect(repo.createQueryBuilder('permission').leftJoinAndSelect).toHaveBeenCalled().exactly(2).times;
+        Expect(repo.createQueryBuilder('permission').leftJoinAndSelect).toHaveBeenCalledWith('permission.users', 'users');
+        Expect(repo.createQueryBuilder('permission').leftJoinAndSelect).toHaveBeenCalledWith('permission.roles', 'roles');
+        Expect(repo.createQueryBuilder('permission').where).toHaveBeenCalledWith(clause);
+        Expect(repo.createQueryBuilder('permission').getOne).toHaveBeenCalled();
     }
 
     @AsyncTest('Update a permission')

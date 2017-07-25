@@ -130,6 +130,24 @@ export class UserServiceFixture {
         Expect(repo.createQueryBuilder('user').getMany).toHaveBeenCalled().exactly(1).times;
     }
 
+    @AsyncTest('Read a user')
+    public async readOne(){
+        const clause = 'test=clause';
+        const result = await UserService.readOne(clause);
+        
+        Expect(result).toBeDefined();
+        Expect(result.id).toBe(1);
+
+        const repo = MySQLService.connection.getRepository(User);
+        Expect(repo.createQueryBuilder).toHaveBeenCalledWith('user');
+        Expect(repo.createQueryBuilder('user').leftJoinAndSelect).toHaveBeenCalled().exactly(3).times;
+        Expect(repo.createQueryBuilder('user').leftJoinAndSelect).toHaveBeenCalledWith('user.permissions', 'permissions');
+        Expect(repo.createQueryBuilder('user').leftJoinAndSelect).toHaveBeenCalledWith('user.roles', 'roles');
+        Expect(repo.createQueryBuilder('user').leftJoinAndSelect).toHaveBeenCalledWith('roles.permissions', 'roles.permissions');
+        Expect(repo.createQueryBuilder('user').where).toHaveBeenCalledWith(clause).exactly(1).times;
+        Expect(repo.createQueryBuilder('user').getOne).toHaveBeenCalled().exactly(1).times;
+    }
+
     @AsyncTest('Update a user')
     public async update(){
         const user = new User();

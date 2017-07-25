@@ -6,7 +6,10 @@ import { Permission } from './Permission'
 export class User {
 
     @PrimaryGeneratedColumn()
-    id : number;
+    id: number;
+
+    @Column('string', { nullable: true, length: "255" })
+    extId: string;
 
     @Column('string', { unique: true, length: "255" })
     email: string;
@@ -17,22 +20,22 @@ export class User {
     @Column('boolean', { default: true })
     isEnabled: boolean;
 
-    @Column('string', { unique: true, length:  "255"})
-    jwt : string;
+    @Column('string', { unique: true, length: "1024" })
+    jwt: string;
 
     @ManyToMany(type => Role, role => role.users, {
         cascadeInsert: false,
         cascadeUpdate: false
     })
-    roles : Role[] = [];
+    roles: Role[] = [];
 
     @Column('string', { default: "" })
-    services : string;
+    services: string;
 
     @ManyToMany(type => Permission, permission => permission.users, {
         cascadeInsert: false,
         cascadeUpdate: false
     })
-    permissions : Permission[] = [];
+    permissions: Permission[] = [];
 
 }

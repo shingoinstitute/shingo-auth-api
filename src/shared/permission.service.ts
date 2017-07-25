@@ -3,13 +3,15 @@ import * as _ from 'lodash';
 
 export class PermissionService {
 
-    static async create(permission : Permission) : Promise<Permission> {
+    static async create(permission: Permission): Promise<Permission> {
         const permissionRepository = MySQLService.connection.getRepository(Permission);
-        
-        if(permission.id) permission = _.omit(permission, [ 'id' ]);
+
+        if (permission.id) permission = _.omit(permission, ['id']);
 
         try {
-            await permissionRepository.persist(permission);
+            permission = await permissionRepository.persist(permission);
+            permission.roles = [];
+            permission.users = [];
 
             return Promise.resolve(permission);
         } catch (error) {
@@ -17,7 +19,7 @@ export class PermissionService {
         }
     }
 
-    static async read(clause : string) : Promise<Permission[]> {
+    static async read(clause: string): Promise<Permission[]> {
         const permissionRepository = MySQLService.connection.getRepository(Permission);
         try {
             let permissions = await permissionRepository.createQueryBuilder('permission')
@@ -32,7 +34,22 @@ export class PermissionService {
         }
     }
 
-    static async update(permission : Permission) : Promise<boolean> {
+    static async readOne(clause: string): Promise<Permission> {
+        const permissionRepository = MySQLService.connection.getRepository(Permission);
+        try {
+            let permission = await permissionRepository.createQueryBuilder('permission')
+                .leftJoinAndSelect('permission.users', 'users')
+                .leftJoinAndSelect('permission.roles', 'roles')
+                .where(clause)
+                .getOne();
+
+            return Promise.resolve(permission);
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
+    static async update(permission: Permission): Promise<boolean> {
         const permissionRepository = MySQLService.connection.getRepository(Permission);
         let update = _.omit(permission, [
             'user',
@@ -48,10 +65,11 @@ export class PermissionService {
         }
     }
 
-    static async delete(permission : Permission) : Promise<boolean> {
+    static async delete(permission: Permission): Promise<boolean> {
         const permissionRepository = MySQLService.connection.getRepository(Permission);
         try {
-            if(!permission.id) permission = await permissionRepository.findOne({ resource: permission.resource, level: permission.level });
+            if (!permission.id) permission = await permissionRepository.findOne({ resource: permission.resource, level: permission.level });
+            if (!permission) return Promise.resolve(true);
             await permissionRepository.removeById(permission.id);
 
             return Promise.resolve(true);
