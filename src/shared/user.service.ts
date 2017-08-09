@@ -17,13 +17,14 @@ export interface RoleOperation {
 
 export class UserService {
 
-    static async create(creds: Credentials): Promise<User> {
+    static async create(creds: User): Promise<User> {
         const userRepository = MySQLService.connection.getRepository(User);
         let user = new User();
         user.email = creds.email;
         user.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
         user.services = creds.services;
         user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
+        user.extId = creds.extId;
 
         try {
             await userRepository.persist(user);
@@ -79,12 +80,17 @@ export class UserService {
         if (user.password) update.password = scrypt.kdfSync(user.password, scrypt.paramsSync(0.1)).toString("base64");
 
         try {
-            if (user.id === undefined && user.extId != undefined) {
+            if (user.id === 0 && user.extId != undefined) {
                 let oldUser = await userRepository.findOne({ extId: user.extId });
                 if (oldUser === undefined) return Promise.reject({ error: 'USER_NOT_FOUND', message: `External Id, ${user.extId}, did not map to a user.` });
                 update.id = oldUser.id;
+                if (!update.isEnabled) update.isEnabled = oldUser.isEnabled;
+                if (!update.password) update.password = oldUser.password;
+                if (!update.email) update.email = oldUser.email;
+                if (!update.services) update.services = oldUser.services;
             }
 
+            if (user.password) update.jwt = jwt.encode({ user: `${update.id}:${update.email}:${update.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
             await userRepository.persist(update);
             return Promise.resolve(true);
         } catch (error) {
@@ -100,6 +106,8 @@ export class UserService {
                 if (oldUser === undefined) return Promise.reject({ error: 'USER_NOT_FOUND', message: `External Id, ${user.extId}, did not map to a user.` });
                 user.id = oldUser.id;
             }
+
+            if (user.email === '') return Promise.resolve(true);
 
             await userRepository.removeById(user.id);
 

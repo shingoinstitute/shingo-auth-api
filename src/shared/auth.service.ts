@@ -27,7 +27,6 @@ export class AuthService {
 
     static async login(creds: Credentials): Promise<User> {
         try {
-            console.log('Searching for user', creds);
             let user = await UserService.readOne(`user.email='${creds.email}'`);
 
             if (user === undefined) return Promise.reject({ error: 'EMAIL_NOT_FOUND' });
@@ -37,7 +36,6 @@ export class AuthService {
 
             user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 60000000) }, MySQLService.jwtSecret);
 
-            console.log('jwt: ', user.jwt);
             user = _.omit(user, ['password']);
 
             await UserService.update(_.omit(user, ['permissions', 'roles']));
@@ -49,6 +47,7 @@ export class AuthService {
     }
 
     static async isValid(token: string): Promise<boolean> {
+        if (token === '' || token === undefined) return Promise.reject({ error: 'INVALID_TOKEN' });
         try {
             let user = await UserService.readOne(`user.jwt='${token}'`);
 
