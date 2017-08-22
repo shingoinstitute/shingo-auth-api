@@ -74,7 +74,8 @@ export class UserService {
         let update = _.omit(user, [
             'permissions',
             'roles',
-            'password'
+            'password',
+            'jwt'
         ]);
 
         if (user.password) update.password = scrypt.kdfSync(user.password, scrypt.paramsSync(0.1)).toString("base64");
