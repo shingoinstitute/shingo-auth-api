@@ -20,7 +20,7 @@ export class User {
     @Column('boolean', { default: true })
     isEnabled: boolean;
 
-    @Column('string', { unique: true, length: "1024" })
+    @Column('string', { length: "1024" })
     jwt: string;
 
     @ManyToMany(type => Role, role => role.users, {
