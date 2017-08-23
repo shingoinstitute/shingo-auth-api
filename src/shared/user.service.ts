@@ -78,18 +78,27 @@ export class UserService {
             'jwt'
         ]);
 
+        Object.keys(update).forEach(key => (update[key] == '' || update[key] == undefined || update[key] == null) && delete update[key]);
+
+        if (update.id === 0) delete update['id'];
+
         if (user.password) update.password = scrypt.kdfSync(user.password, scrypt.paramsSync(0.1)).toString("base64");
 
         try {
-            if (user.id === 0 && user.extId != undefined) {
-                let oldUser = await userRepository.findOne({ extId: user.extId });
+            let oldUser: User;
+            if (user.id != undefined) {
+                oldUser = await userRepository.findOneById(user.id);
+                if (oldUser === undefined) return Promise.reject({ error: 'USER_NOT_FOUND', message: `Id, ${user.id}, did not map to a user.` });
+            } else if (user.extId != undefined) {
+                oldUser = await userRepository.findOne({ extId: user.extId });
                 if (oldUser === undefined) return Promise.reject({ error: 'USER_NOT_FOUND', message: `External Id, ${user.extId}, did not map to a user.` });
-                update.id = oldUser.id;
-                if (!update.isEnabled) update.isEnabled = oldUser.isEnabled;
-                if (!update.password) update.password = oldUser.password;
-                if (!update.email) update.email = oldUser.email;
-                if (!update.services) update.services = oldUser.services;
             }
+            update.id = oldUser.id;
+            if (!update.isEnabled) update.isEnabled = oldUser.isEnabled;
+            if (!update.password) update.password = oldUser.password;
+            if (!update.email) update.email = oldUser.email;
+            if (!update.services) update.services = oldUser.services;
+            if (!update.extId) update.extId = oldUser.extId;
 
             if (user.password) update.jwt = jwt.encode({ user: `${update.id}:${update.email}:${update.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
             await userRepository.persist(update);
