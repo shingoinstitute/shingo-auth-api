@@ -74,8 +74,7 @@ export class UserService {
         let update = _.omit(user, [
             'permissions',
             'roles',
-            'password',
-            'jwt'
+            'password'
         ]);
 
         Object.keys(update).forEach(key => (update[key] == '' || update[key] == undefined || update[key] == null) && delete update[key]);
