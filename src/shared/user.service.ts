@@ -79,13 +79,11 @@ export class UserService {
 
         Object.keys(update).forEach(key => (update[key] == '' || update[key] == undefined || update[key] == null) && delete update[key]);
 
-        if (update.id === 0) delete update['id'];
-
         if (user.password) update.password = scrypt.kdfSync(user.password, scrypt.paramsSync(0.1)).toString("base64");
 
         try {
             let oldUser: User;
-            if (user.id != undefined) {
+            if (user.id !== 0) {
                 oldUser = await userRepository.findOneById(user.id);
                 if (oldUser === undefined) return Promise.reject({ error: 'USER_NOT_FOUND', message: `Id, ${user.id}, did not map to a user.` });
             } else if (user.extId != undefined) {
