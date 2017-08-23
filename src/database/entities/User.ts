@@ -23,6 +23,9 @@ export class User {
     @Column('string', { length: "1024" })
     jwt: string;
 
+    @Column('string', { length: "1024", default: '' })
+    resetToken: string;
+
     @ManyToMany(type => Role, role => role.users, {
         cascadeInsert: false,
         cascadeUpdate: false
