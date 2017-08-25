@@ -64,7 +64,6 @@ export class AuthService {
     }
 
     static async canAccess(accessRequest: AccessRequest): Promise<boolean> {
-        console.log('canAccess request', accessRequest);
         try {
             let user = await UserService.readOne(`user.jwt='${accessRequest.jwt}'`);
 
@@ -72,10 +71,8 @@ export class AuthService {
             let permissions = user.permissions;
 
             for (let role of user.roles) {
-                permissions.concat(role.permissions);
+                permissions = permissions.concat(role.permissions);
             }
-
-            console.log('checking permissions: ', permissions);
 
             let canAccess = false;
             for (let permission of permissions) {
