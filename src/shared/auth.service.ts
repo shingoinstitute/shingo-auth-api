@@ -40,7 +40,7 @@ export class AuthService {
             user.lastLogin = new Date();
 
             await UserService.update(_.omit(user, ['permissions', 'roles']));
-
+            console.log('Returning user: ', user);
             return Promise.resolve(user);
         } catch (error) {
             console.error('Error logging in: ', error);
