@@ -43,6 +43,7 @@ export class AuthService {
 
             return Promise.resolve(user);
         } catch (error) {
+            console.error('Error logging in: ', error);
             return Promise.reject(error);
         }
     }
