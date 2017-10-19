@@ -37,7 +37,7 @@ export class AuthService {
             user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 60000000) }, MySQLService.jwtSecret);
 
             user = _.omit(user, ['password']);
-            user.lastLogin = new Date();
+            user.lastLogin = new Date().toUTCString();
 
             await UserService.update(_.omit(user, ['permissions', 'roles']));
             console.log('Returning user: ', user);

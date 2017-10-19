@@ -26,8 +26,8 @@ export class User {
     @Column('string', { length: "1024", default: '' })
     resetToken: string;
 
-    @Column('date', { nullable: true })
-    lastLogin: Date;
+    @Column('string', { nullable: true, length: "255" })
+    lastLogin: string;
 
     @ManyToMany(type => Role, role => role.users, {
         cascadeInsert: false,
