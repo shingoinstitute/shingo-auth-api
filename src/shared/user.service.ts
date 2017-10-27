@@ -94,7 +94,7 @@ export class UserService {
             if (!update.isEnabled) update.isEnabled = oldUser.isEnabled;
             if (!update.password) update.password = oldUser.password;
             if (!update.email) update.email = oldUser.email;
-            if (!update.services) update.services = oldUser.services;
+            if (!update.services && update.services !== '') update.services = oldUser.services;
             if (!update.extId) update.extId = oldUser.extId;
 
             if (user.password) update.jwt = jwt.encode({ user: `${update.id}:${update.email}:${update.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
