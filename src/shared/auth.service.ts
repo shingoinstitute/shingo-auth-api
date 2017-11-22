@@ -122,7 +122,7 @@ export class AuthService {
 
             if (permission === undefined) return Promise.reject({ error: "PERMISSION_NOT_FOUND" });
 
-            permission.users = permission.users.filter(user => { return user.id === grantRequest.accessorId; });
+            permission.users = permission.users.filter(user => { return user.id !== grantRequest.accessorId; });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['roles']));
 
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
@@ -137,7 +137,7 @@ export class AuthService {
 
             if (permission === undefined) return Promise.reject({ error: "PERMISSION_NOT_FOUND" });
 
-            permission.roles = permission.roles.filter(role => { return role.id === grantRequest.accessorId; });
+            permission.roles = permission.roles.filter(role => { return role.id !== grantRequest.accessorId; });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['users']));
 
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
