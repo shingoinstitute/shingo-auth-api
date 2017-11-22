@@ -52,7 +52,7 @@ export class PermissionService {
     static async update(permission: Permission): Promise<boolean> {
         const permissionRepository = MySQLService.connection.getRepository(Permission);
         let update = _.omit(permission, [
-            'user',
+            'users',
             'roles'
         ]);
 
