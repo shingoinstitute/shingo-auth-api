@@ -40,7 +40,7 @@ export class AuthService {
             user.lastLogin = new Date().toUTCString();
 
             await UserService.update(_.omit(user, ['permissions', 'roles']));
-            console.log('Returning user: ', user);
+
             return Promise.resolve(user);
         } catch (error) {
             console.error('Error logging in: ', error);
@@ -76,13 +76,11 @@ export class AuthService {
                 permissions = permissions.concat(role.permissions);
             }
 
-            let canAccess = false;
             for (let permission of permissions) {
-                if (permission.resource === accessRequest.resource && permission.level >= accessRequest.level) canAccess = true;
-                if (permission.resource === accessRequest.resource && permission.level === 0) return Promise.resolve(false);
+                if (permission.resource === accessRequest.resource && permission.level >= accessRequest.level) return Promise.resolve(true);
             }
 
-            return Promise.resolve(canAccess);
+            return Promise.resolve(false);
         } catch (error) {
             return Promise.reject(error);
         }
@@ -124,7 +122,7 @@ export class AuthService {
 
             if (permission === undefined) return Promise.reject({ error: "PERMISSION_NOT_FOUND" });
 
-            permission.users = permission.users.filter(user => { return user.id === grantRequest.accessorId; });
+            permission.users = permission.users.filter(user => { return user.id !== grantRequest.accessorId; });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['roles']));
 
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
@@ -139,7 +137,7 @@ export class AuthService {
 
             if (permission === undefined) return Promise.reject({ error: "PERMISSION_NOT_FOUND" });
 
-            permission.roles = permission.roles.filter(role => { return role.id === grantRequest.accessorId; });
+            permission.roles = permission.roles.filter(role => { return role.id !== grantRequest.accessorId; });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['users']));
 
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
