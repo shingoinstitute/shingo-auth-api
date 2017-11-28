@@ -23,6 +23,11 @@ export interface PermissionSet {
     accessorId: number
 }
 
+export interface LoginAsRequest {
+    adminId: number,
+    userId: number
+}
+
 export class AuthService {
 
     static async login(creds: Credentials): Promise<User> {
@@ -142,6 +147,21 @@ export class AuthService {
 
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
         } catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
+    static async loginAs(loginAsRequest: LoginAsRequest): Promise<User>
+    {
+        try {
+            let user = await UserService.readOne(`user.id='${loginAsRequest.userId}'`);
+
+            user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 60000000) }, MySQLService.jwtSecret);
+            await UserService.update(_.omit(user, ['permissions', 'roles']));
+
+            console.log('ADMIN_USED_LOGIN_AS: ', loginAsRequest);
+            return Promise.resolve(user);
+        } catch(error) {
             return Promise.reject(error);
         }
     }
