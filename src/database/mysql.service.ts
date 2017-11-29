@@ -1,9 +1,12 @@
 import { createConnection, Connection } from 'typeorm';
 import { Permission, Role, User, Level } from './entities';
+import { LoggerService } from '../shared/logger.service';
 
 export { Permission, Role, User, Level };
 
 export class MySQLService {
+
+    private static log = new LoggerService();
 
     public static jwtSecret = (process.env.JWT_SECRET || 'ilikecatz');
 
@@ -30,7 +33,7 @@ export class MySQLService {
                 });
                 return Promise.resolve();
             } catch (error) {
-                console.error('Error in MySQLService.init()', error);
+                MySQLService.log.error('Error in MySQLService.init(): %j', error);
                 return Promise.reject(error);
             }
         }
