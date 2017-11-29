@@ -35,7 +35,7 @@ docker rm shingo-mysql-local
 docker run -itd                                 \
     --name shingo-mysql-local                   \
     -e MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASS}   \
-    --volume /var/lib/mysql:/var/lib/mysql:rw   \
+    --volume ${MYSQL_VOL_PREFIX}/var/lib/mysql:/var/lib/mysql:rw   \
     --network shingo-dev-net                    \
     mysql:5.7
 
@@ -49,5 +49,6 @@ docker run -itd                             \
     -e MYSQL_URL=${MYSQL_URL}               \
     --name shingo-auth-api                  \
     --network shingo-dev-net                \
-    --volume $(pwd):/code                   \
+    --volume $(pwd)/src:/code/src           \
+    --volume $(pwd)/specs:/code/specs       \
     shingo-auth-api:${TAG}

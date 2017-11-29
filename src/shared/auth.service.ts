@@ -1,3 +1,4 @@
+import { LoggerService } from './logger.service';
 import { Permission, User, Role, MySQLService } from '../database/mysql.service';
 import { Credentials, UserService } from './user.service';
 import { PermissionService } from './permission.service';
@@ -30,6 +31,8 @@ export interface LoginAsRequest {
 
 export class AuthService {
 
+    static log = new LoggerService();
+
     static async login(creds: Credentials): Promise<User> {
         try {
             let user = await UserService.readOne(`user.email='${creds.email}'`);
@@ -48,7 +51,7 @@ export class AuthService {
 
             return Promise.resolve(user);
         } catch (error) {
-            console.error('Error logging in: ', error);
+            AuthService.log.error('Error logging in: ', error);
             return Promise.reject(error);
         }
     }
@@ -157,9 +160,9 @@ export class AuthService {
             let user = await UserService.readOne(`user.id='${loginAsRequest.userId}'`);
 
             user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 60000000) }, MySQLService.jwtSecret);
-            await UserService.update(_.omit(user, ['permissions', 'roles']));
+            await UserService.update(_.omit(user, ['permissions', 'roles', 'password']));
 
-            console.log('ADMIN_USED_LOGIN_AS: ', loginAsRequest);
+            AuthService.log.warn('ADMIN_USED_LOGIN_AS: ', loginAsRequest);
             return Promise.resolve(user);
         } catch(error) {
             return Promise.reject(error);
