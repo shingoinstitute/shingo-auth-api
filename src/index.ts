@@ -1,5 +1,6 @@
 import { AuthMicroservice } from './microservices/auth.microservice';
 import * as grpc from 'grpc';
+import { LoggerService } from './shared/logger.service';
 
 const microservice = new AuthMicroservice();
 const port = process.env.PORT || 8888;
@@ -29,9 +30,10 @@ server.addService(microservice.authServices.AuthServices.service, {
     grantPermissionToUser: microservice.grantPermissionToUser,
     grantPermissionToRole: microservice.grantPermissionToRole,
     revokePermissionFromUser: microservice.revokePermissionFromUser,
-    revokePermissionFromRole: microservice.revokePermissionFromRole
+    revokePermissionFromRole: microservice.revokePermissionFromRole,
+    loginAs: microservice.loginAs
 });
 
 server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
 server.start();
-console.log(`AuthMicroservice is listening on port ${port}.`)
+new LoggerService().info(`AuthMicroservice is listening on port ${port}.`)

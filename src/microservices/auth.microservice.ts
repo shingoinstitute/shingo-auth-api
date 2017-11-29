@@ -1,10 +1,13 @@
+import { LoggerService } from '../shared/logger.service';
 import * as grpc from 'grpc';
 import * as path from 'path';
 import { MySQLService } from '../database/mysql.service';
 import { UserService, PermissionService, RoleService, AuthService } from '../shared';
 
+const log = new LoggerService();
+
 function errorHandler(error, callback, message) {
-    console.error(message, error);
+    log.error(message, error);
     const metadata = new grpc.Metadata();
     metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
     callback({
@@ -15,7 +18,7 @@ function errorHandler(error, callback, message) {
 }
 
 function streamErrorHandler(error, call, message) {
-    console.error(message, error);
+    log.error(message, error);
     const metadata = new grpc.Metadata();
     metadata.add('error-bin', Buffer.from(JSON.stringify(error)));
     call.emit('error', {
@@ -34,10 +37,10 @@ export class AuthMicroservice {
         this.authServices = grpc.load(protoPath).authservices;
         MySQLService.init()
             .then(() => {
-                console.log('DB initialized');
+                log.info('DB initialized');
             })
             .catch(error => {
-                console.error('Error initializing DB: ', error);
+                log.error('Error initializing DB: ', error);
             });
     }
 
@@ -222,5 +225,11 @@ export class AuthMicroservice {
         AuthService.revokeFromRole(call.request)
             .then(permissionSet => callback(null, permissionSet))
             .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.revokePermissionFromRole(): '));
+    }
+
+    loginAs(call, callback) {
+        AuthService.loginAs(call.request)
+            .then(user => callback(null, user))
+            .catch(error => errorHandler(error, callback, 'Error in AuthMicroservices.loginAs(): '));
     }
 }
