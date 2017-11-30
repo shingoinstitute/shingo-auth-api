@@ -32,15 +32,22 @@ export interface LoginAsRequest {
 export class AuthService {
 
     static log = new LoggerService();
+    static auditLog = new LoggerService('auth-api.audit.log');
 
     static async login(creds: Credentials): Promise<User> {
         try {
             let user = await UserService.readOne(`user.email='${creds.email}'`);
 
-            if (user === undefined) return Promise.reject({ error: 'EMAIL_NOT_FOUND' });
+            if (user === undefined) {
+                AuthService.auditLog.warn('[EMAIL_NOT_FOUND] Invalid log in attempt: ' + creds.email + '@' + creds.services);
+                return Promise.reject({ error: 'EMAIL_NOT_FOUND' });
+            }
 
             const matches = await scrypt.verifyKdf(new Buffer(user.password, "base64"), creds.password);
-            if (!matches) return Promise.reject({ error: 'INVALID_PASSWORD' });
+            if (!matches) {
+                AuthService.auditLog.warn('[INVALID_PASSWORD] Invalid log in attempt: ' + creds.email + '@' + creds.services);
+                return Promise.reject({ error: 'INVALID_PASSWORD' });
+            }
 
             user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 60000000) }, MySQLService.jwtSecret);
 
@@ -48,7 +55,7 @@ export class AuthService {
             user.lastLogin = new Date().toUTCString();
 
             await UserService.update(_.omit(user, ['permissions', 'roles']));
-
+            AuthService.auditLog.info('Successful login: ' + creds.email + '@' + creds.services);
             return Promise.resolve(user);
         } catch (error) {
             AuthService.log.error('Error logging in: ', error);
@@ -61,12 +68,23 @@ export class AuthService {
         try {
             let user = await UserService.readOne(`user.jwt='${token}'`);
 
-            if (!user) return Promise.resolve(false);
+            if (!user) {
+                AuthService.auditLog.warn('[INVALID_TOKEN] isValid returned false' + token);
+                return Promise.resolve(false);
+            }
 
             const decoded = jwt.decode(token, MySQLService.jwtSecret);
-            if (decoded.user != `${user.id}:${user.email}:${user.password}`) return Promise.resolve(false);
-            if (new Date(decoded.expires) <= new Date()) return Promise.resolve(false);
+            if (decoded.user != `${user.id}:${user.email}:${user.password}`) {
+                AuthService.auditLog.warn('[INVALID_TOKEN]  isValid returned false' + token);
+                return Promise.resolve(false);
+            }
+            if (new Date(decoded.expires) <= new Date()) {
+                AuthService.auditLog.warn('[EXPIRED_TOKEN]  isValid returned false' + token);                
+                return Promise.resolve(false);
+            }
 
+            AuthService.auditLog.info('isValid returned true');
+            
             return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);
@@ -77,7 +95,10 @@ export class AuthService {
         try {
             let user = await UserService.readOne(`user.jwt='${accessRequest.jwt}'`);
 
-            if (user === undefined) return Promise.resolve(false);
+            if (user === undefined) {
+                AuthService.auditLog.warn('[USER_NOT_FOUND]  accessRequest denied: %j', accessRequest);                
+                return Promise.resolve(false);
+            }
             let permissions = user.permissions;
 
             for (let role of user.roles) {
@@ -85,9 +106,14 @@ export class AuthService {
             }
 
             for (let permission of permissions) {
-                if (permission.resource === accessRequest.resource && permission.level >= accessRequest.level) return Promise.resolve(true);
+                if (permission.resource === accessRequest.resource && permission.level >= accessRequest.level) {
+                    AuthService.auditLog.info('accessRequest accepted: %j', accessRequest);                
+                    return Promise.resolve(true);
+                }
             }
 
+            AuthService.auditLog.warn('[NO_PERMISSION_FOUND]  accessRequest denied: %j', accessRequest);                
+            
             return Promise.resolve(false);
         } catch (error) {
             return Promise.reject(error);
@@ -102,7 +128,8 @@ export class AuthService {
 
             permission.users.push({ id: grantRequest.accessorId } as User);
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['roles']));
-
+            AuthService.auditLog.info('[USER]  Permission Grant Request : %j', grantRequest);                
+            
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
         } catch (error) {
             return Promise.reject(error);
@@ -117,7 +144,8 @@ export class AuthService {
 
             permission.roles.push({ id: grantRequest.accessorId } as Role);
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['users']));
-
+            AuthService.auditLog.info('[ROLE]  Permission Grant Request : %j', grantRequest);                
+            
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
         } catch (error) {
             return Promise.reject(error);
@@ -132,7 +160,8 @@ export class AuthService {
 
             permission.users = permission.users.filter(user => { return user.id !== grantRequest.accessorId; });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['roles']));
-
+            AuthService.auditLog.info('[USER]  Permission Revoke Request : %j', grantRequest);                
+            
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
         } catch (error) {
             return Promise.reject(error);
@@ -147,7 +176,8 @@ export class AuthService {
 
             permission.roles = permission.roles.filter(role => { return role.id !== grantRequest.accessorId; });
             await MySQLService.connection.getRepository(Permission).persist(_.omit(permission, ['users']));
-
+            AuthService.auditLog.info('[ROLE]  Permission Revoke Request : %j', grantRequest);                
+            
             return Promise.resolve({ permissionId: permission.id, accessorId: grantRequest.accessorId });
         } catch (error) {
             return Promise.reject(error);
@@ -162,7 +192,7 @@ export class AuthService {
             user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 60000000) }, MySQLService.jwtSecret);
             await UserService.update(_.omit(user, ['permissions', 'roles', 'password']));
 
-            AuthService.log.warn('ADMIN_USED_LOGIN_AS: ', loginAsRequest);
+            AuthService.auditLog.info('Login As Request : %j', loginAsRequest);                            
             return Promise.resolve(user);
         } catch(error) {
             return Promise.reject(error);
