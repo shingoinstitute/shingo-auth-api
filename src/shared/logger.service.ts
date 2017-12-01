@@ -22,7 +22,7 @@ export class LoggerService {
 
     constructor(logName?: string) {
         let logPath: string = process.env.LOG_PATH || '';
-        logName = process.env.LOG_FILE || logName || 'auth-api.log';
+        logName = logName || process.env.LOG_FILE || 'auth-api.log';
         let logLevel: Level = process.env.LOG_LEVEL || 'silly';
 
         const logTransports = [
