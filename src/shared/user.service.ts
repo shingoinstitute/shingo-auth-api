@@ -1,3 +1,4 @@
+import { LoggerService } from './logger.service';
 import { User, MySQLService } from '../database/mysql.service';
 import * as scrypt from 'scrypt';
 import * as jwt from 'jwt-simple';
@@ -17,6 +18,8 @@ export interface RoleOperation {
 
 export class UserService {
 
+    static auditLog = new LoggerService('auth-api.audit.log');
+
     static async create(creds: User): Promise<User> {
         const userRepository = MySQLService.connection.getRepository(User);
         let user = new User();
@@ -31,6 +34,9 @@ export class UserService {
             user = _.omit(user, ['password']);
             user.roles = [];
             user.permissions = [];
+
+            UserService.auditLog.info('User created: %j', user);
+
             return Promise.resolve(user);
         } catch (error) {
             return Promise.reject(error);
@@ -99,6 +105,7 @@ export class UserService {
 
             if (user.password) update.jwt = jwt.encode({ user: `${update.id}:${update.email}:${update.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
             await userRepository.persist(update);
+            UserService.auditLog.info('User updated: %j', user);
             return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);
@@ -118,6 +125,7 @@ export class UserService {
 
             await userRepository.removeById(user.id);
 
+            UserService.auditLog.info('User deleted: %j', user);
             return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);
@@ -128,7 +136,8 @@ export class UserService {
         const userEmail = roleOp.userEmail;
         const roleId = roleOp.roleId;
         const userRepository = MySQLService.connection.getRepository(User);
-
+        UserService.auditLog.info('Trying to add role to user: %j', roleOp);
+        
         try {
             let user = await userRepository.createQueryBuilder('user')
                 .leftJoinAndSelect('user.roles', 'roles')
@@ -141,6 +150,7 @@ export class UserService {
 
             user.roles.push(<any>{ id: roleId });
             await userRepository.persist(user);
+            UserService.auditLog.info('User role added: %j', roleOp);
             return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);
@@ -165,6 +175,7 @@ export class UserService {
             delete user.permissions;
 
             await userRepository.persist(user);
+            UserService.auditLog.info('User role removed: %j', user);
             return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);

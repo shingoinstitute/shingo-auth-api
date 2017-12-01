@@ -1,7 +1,10 @@
+import { LoggerService } from './logger.service';
 import { Role, MySQLService } from '../database/mysql.service';
 import * as _ from 'lodash';
 
 export class RoleService {
+
+    static auditLog = new LoggerService('auth-api.audit.log');
 
     static async create(role : Role) : Promise<Role> {
         const roleRepository = MySQLService.connection.getRepository(Role);
@@ -11,7 +14,7 @@ export class RoleService {
 
         try {
             await roleRepository.persist(role);
-
+            RoleService.auditLog.info('Role created: %j', role);
             return Promise.resolve(role);
         } catch (error) {
             return Promise.reject(error);
@@ -55,6 +58,8 @@ export class RoleService {
             'users'
         ]);
 
+        RoleService.auditLog.info('Role updated: %j', role);
+        
         try {
             await roleRepository.persist(role);
 
@@ -69,6 +74,8 @@ export class RoleService {
         try {
             await roleRepository.removeById(role.id);
 
+            RoleService.auditLog.info('Role deleted: %j', role);
+            
             return Promise.resolve(true);
         } catch (error) {
             return Promise.reject(error);
