@@ -23,7 +23,7 @@ export class LoggerService {
     constructor(logName?: string) {
         let logPath: string = process.env.LOG_PATH || '';
         logName = logName || process.env.LOG_FILE || 'auth-api.log';
-        let logLevel: Level = process.env.LOG_LEVEL || 'silly';
+        let logLevel: Level = process.env.LOG_LEVEL as any || 'silly';
 
         const logTransports = [
             new transports.Console({ colorize: true, prettyPrint: true, timestamp: true }),

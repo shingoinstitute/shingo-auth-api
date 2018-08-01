@@ -1,4 +1,4 @@
-import { createConnection, Connection } from 'typeorm';
+import { createConnection, Connection, ConnectionOptions } from 'typeorm';
 import { Permission, Role, User, Level } from './entities';
 import { LoggerService } from '../shared/logger.service';
 
@@ -30,11 +30,11 @@ export class MySQLService {
                         User
                     ],
                     autoSchemaSync: process.env.NODE_ENV !== 'production'
-                });
-                return Promise.resolve();
+                } as ConnectionOptions);
+                return MySQLService.connection;
             } catch (error) {
                 MySQLService.log.error('Error in MySQLService.init(): %j', error);
-                return Promise.reject(error);
+                throw error;
             }
         }
 

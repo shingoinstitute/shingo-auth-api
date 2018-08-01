@@ -4,3 +4,4 @@ build/
 specs/js/
 coverage/
 .nyc_output/
+*.log
