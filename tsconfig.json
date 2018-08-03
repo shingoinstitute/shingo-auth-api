@@ -3,21 +3,26 @@
     "module": "commonjs",
     "declaration": false,
     "noImplicitAny": false,
-    "noLib": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "strict": true,
     "target": "es6",
     "outDir": "build",
-    "typeRoots": [
-      "node_modules/@types"
-    ]
+    "esModuleInterop": true,
+    "baseUrl": "./",
+    "paths": {
+      "*": [
+        "./@types/*",
+        "*"
+      ]
+    }
   },
   "include": [
-    "**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "build",
-    "specs"
+    "**/*.mock.ts",
+    "**/*.spec.ts"
   ]
 }

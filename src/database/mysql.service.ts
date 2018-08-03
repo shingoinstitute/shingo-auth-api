@@ -14,22 +14,25 @@ export class MySQLService {
 
     public static async init() {
         if (MySQLService.connection === undefined) {
+            if (!process.env.MYSQL_AUTH_USER || !process.env.MYSQL_AUTH_PASS) {
+                throw new Error('Missing Environment Variables')
+            }
+
             try {
+                const port = process.env.MYSQL_PORT && parseInt(process.env.MYSQL_PORT, 10) || 3306
                 MySQLService.connection = await createConnection({
-                    driver: {
-                        type: 'mysql',
-                        host: process.env.MYSQL_URL || 'localhost',
-                        port: process.env.MYSQL_PORT || 3306,
-                        username: process.env.MYSQL_AUTH_USER,
-                        password: process.env.MYSQL_AUTH_PASS,
-                        database: process.env.MYSQL_AUTH_DB || 'authDb'
-                    },
+                    type: 'mysql',
+                    host: process.env.MYSQL_URL || 'localhost',
+                    port,
+                    username: process.env.MYSQL_AUTH_USER,
+                    password: process.env.MYSQL_AUTH_PASS,
+                    database: process.env.MYSQL_AUTH_DB || 'shingoauth',
                     entities: [
                         Permission,
                         Role,
                         User
                     ],
-                    autoSchemaSync: process.env.NODE_ENV !== 'production'
+                    synchronize: process.env.NODE_ENV !== 'production'
                 } as ConnectionOptions);
                 return MySQLService.connection;
             } catch (error) {

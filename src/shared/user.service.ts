@@ -1,8 +1,9 @@
 import { LoggerService } from './logger.service';
 import { User, MySQLService } from '../database/mysql.service';
 import * as scrypt from 'scrypt';
-import * as jwt from 'jwt-simple';
-import * as _ from 'lodash';
+import * as jwt from 'jsonwebtoken';
+import _ from 'lodash';
+import { NotFoundError } from '../util';
 
 
 export interface Credentials {
@@ -20,27 +21,21 @@ export class UserService {
 
     static auditLog = new LoggerService('auth-api.audit.log');
 
-    static async create(creds: User): Promise<User> {
+    static async create(creds: { email: string, password: string, services: string, extId: string }): Promise<_.Omit<User, 'password'>> {
         const userRepository = MySQLService.connection.getRepository(User);
         let user = new User();
         user.email = creds.email;
-        user.password = scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1)).toString("base64");
+        user.password = (await scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1))).toString("base64");
         user.services = creds.services;
-        user.jwt = jwt.encode({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
+        user.jwt = jwt.sign({ user: `${user.id}:${user.email}:${user.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
         user.extId = creds.extId;
 
-        try {
-            await userRepository.persist(user);
-            user = _.omit(user, ['password']);
-            user.roles = [];
-            user.permissions = [];
+        const created = await userRepository.save(user);
+        const returned = { ... _.omit(created, ['password']), permissions: [], roles: [] }
 
-            UserService.auditLog.info('User created: %j', user);
+        UserService.auditLog.info('User created: %j', returned);
 
-            return Promise.resolve(user);
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        return returned;
     }
 
     static async read(clause: string): Promise<User[]> {
@@ -59,7 +54,7 @@ export class UserService {
         }
     }
 
-    static async readOne(clause: string): Promise<User> {
+    static async readOne(clause: string): Promise<User | undefined> {
         const userRepository = MySQLService.connection.getRepository(User);
         try {
             let user = await userRepository.createQueryBuilder('user')
@@ -75,41 +70,34 @@ export class UserService {
         }
     }
 
-    static async update(user: User): Promise<boolean> {
+    static async update(updateData: Partial<User>): Promise<boolean> {
         const userRepository = MySQLService.connection.getRepository(User);
-        let update = _.omit(user, [
-            'permissions',
-            'roles',
-            'password'
-        ]);
 
-        Object.keys(update).forEach(key => (update[key] == '' || update[key] == undefined || update[key] == null) && delete update[key]);
+        const existingUser = typeof updateData.id !== 'undefined'
+            ? await userRepository.findOne(updateData.id)
+            : await userRepository.findOne({ extId: updateData.extId });
 
-        if (user.password) update.password = scrypt.kdfSync(user.password, scrypt.paramsSync(0.1)).toString("base64");
-
-        try {
-            let oldUser: User;
-            if (user.id !== 0) {
-                oldUser = await userRepository.findOneById(user.id);
-                if (oldUser === undefined) return Promise.reject({ error: 'USER_NOT_FOUND', message: `Id, ${user.id}, did not map to a user.` });
-            } else if (user.extId != undefined) {
-                oldUser = await userRepository.findOne({ extId: user.extId });
-                if (oldUser === undefined) return Promise.reject({ error: 'USER_NOT_FOUND', message: `External Id, ${user.extId}, did not map to a user.` });
-            }
-            update.id = oldUser.id;
-            if (!update.isEnabled) update.isEnabled = oldUser.isEnabled;
-            if (!update.password) update.password = oldUser.password;
-            if (!update.email) update.email = oldUser.email;
-            if (!update.services && update.services !== '') update.services = oldUser.services;
-            if (!update.extId) update.extId = oldUser.extId;
-
-            if (user.password) update.jwt = jwt.encode({ user: `${update.id}:${update.email}:${update.password}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret);
-            await userRepository.persist(update);
-            UserService.auditLog.info('User updated: %j', user);
-            return Promise.resolve(true);
-        } catch (error) {
-            return Promise.reject(error);
+        if (typeof existingUser === 'undefined') {
+            throw typeof updateData.id !== 'undefined'
+                ? new NotFoundError(`Id, ${updateData.id}, did not map to a user.`)
+                : new NotFoundError(`External Id, ${updateData.extId}, did not map to a user.`);
         }
+
+        const newPassword =
+            typeof updateData.password !== 'undefined'
+                ? { password: await scrypt.kdf(updateData.password, scrypt.paramsSync(0.1)).then(b => b.toString('base64')) }
+                : {};
+
+        const newJwt = typeof newPassword.password !== 'undefined'
+            ? { jwt: jwt.sign({ user: `${existingUser.id}:${updateData.email || existingUser.email}:${newPassword}`, expires: new Date(new Date().getTime() + 600000) }, MySQLService.jwtSecret) }
+            : {};
+
+        const update = { ...updateData, id: existingUser.id, ...newPassword, ...newJwt }
+
+        return userRepository.update(update.id, update).then(() => {
+            UserService.auditLog.info('User updated: %j', update);
+            return true;
+        });
     }
 
     static async delete(user: User): Promise<boolean> {
@@ -123,7 +111,7 @@ export class UserService {
 
             if (user.email === '') return Promise.resolve(true);
 
-            await userRepository.removeById(user.id);
+            await userRepository.remove(user);
 
             UserService.auditLog.info('User deleted: %j', user);
             return Promise.resolve(true);
@@ -149,7 +137,7 @@ export class UserService {
             delete user.permissions;
 
             user.roles.push(<any>{ id: roleId });
-            await userRepository.persist(user);
+            await userRepository.save(user);
             UserService.auditLog.info('User role added: %j', roleOp);
             return Promise.resolve(true);
         } catch (error) {
@@ -174,7 +162,7 @@ export class UserService {
 
             delete user.permissions;
 
-            await userRepository.persist(user);
+            await userRepository.save(user);
             UserService.auditLog.info('User role removed: %j', user);
             return Promise.resolve(true);
         } catch (error) {

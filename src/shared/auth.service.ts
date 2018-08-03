@@ -5,7 +5,7 @@ import { PermissionService } from './permission.service';
 import { RoleService } from './role.service';
 import * as scrypt from 'scrypt';
 import * as _ from 'lodash';
-import * as jwt from 'jwt-simple';
+import * as jwt from 'jsonwebtoken';
 
 export interface AccessRequest {
     resource: string,

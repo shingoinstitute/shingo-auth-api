@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable } from 'typeorm'
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, BaseEntity } from 'typeorm'
 import { Role } from './Role'
 import { Permission } from './Permission'
 
@@ -6,42 +6,35 @@ import { Permission } from './Permission'
 export class User {
 
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
-    @Column('string', { nullable: true, length: "255" })
-    extId: string;
+    @Column({ nullable: true, length: "255" })
+    extId!: string;
 
-    @Column('string', { unique: true, length: "255" })
-    email: string;
+    @Column({ unique: true, length: "255" })
+    email!: string;
 
-    @Column('string', { unique: true, length: "255" })
-    password: string;
+    @Column({ length: "255" })
+    password!: string;
 
-    @Column('boolean', { default: true })
-    isEnabled: boolean;
+    @Column({ default: true })
+    isEnabled!: boolean;
 
-    @Column('string', { length: "1024" })
-    jwt: string;
+    @Column({ length: "1024" })
+    jwt!: string;
 
-    @Column('string', { length: "1024", default: '' })
-    resetToken: string;
+    @Column({ length: "1024", default: '' })
+    resetToken!: string;
 
-    @Column('string', { nullable: true, length: "255" })
-    lastLogin: string;
+    @Column({ nullable: true, length: "255" })
+    lastLogin!: string;
 
-    @ManyToMany(type => Role, role => role.users, {
-        cascadeInsert: false,
-        cascadeUpdate: false
-    })
+    @ManyToMany(_type => Role, role => role.users)
     roles: Role[] = [];
 
-    @Column('string', { default: "" })
-    services: string;
+    @Column({ default: "" })
+    services!: string;
 
-    @ManyToMany(type => Permission, permission => permission.users, {
-        cascadeInsert: false,
-        cascadeUpdate: false
-    })
+    @ManyToMany(_type => Permission, permission => permission.users)
     permissions: Permission[] = [];
-
 }

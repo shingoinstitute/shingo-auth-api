@@ -6,79 +6,51 @@ export class RoleService {
 
     static auditLog = new LoggerService('auth-api.audit.log');
 
-    static async create(role : Role) : Promise<Role> {
+    static async create(role: Role): Promise<Role> {
         const roleRepository = MySQLService.connection.getRepository(Role);
-        if(role.id) role = _.omit(role, [
-            'id'
-        ]);
+        const cleanRole: _.Omit<Role, 'id'> = 
+            role.id ? _.omit(role, [ 'id' ]) : role
 
-        try {
-            await roleRepository.persist(role);
-            RoleService.auditLog.info('Role created: %j', role);
-            return Promise.resolve(role);
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        const created = await roleRepository.save(cleanRole as Role);
+        RoleService.auditLog.info('Role created: %j', cleanRole);
+        return created;
     }
 
-    static async read(clause : string) : Promise<Role[]> {
+    static async read(clause: string): Promise<Role[]> {
         const roleRepository = MySQLService.connection.getRepository(Role);
-        try {
-            let roles = await roleRepository.createQueryBuilder('role')
-                .leftJoinAndSelect('role.permissions', 'permissions')
-                .leftJoinAndSelect('role.users', 'users')
-                .where(clause)
-                .getMany();
 
-            return Promise.resolve(roles);
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        return await roleRepository.createQueryBuilder('role')
+            .leftJoinAndSelect('role.permissions', 'permissions')
+            .leftJoinAndSelect('role.users', 'users')
+            .where(clause)
+            .getMany();
     }
 
-    static async readOne(clause : string) : Promise<Role> {
+    static async readOne(clause: string): Promise<Role | undefined> {
         const roleRepository = MySQLService.connection.getRepository(Role);
-        try {
-            let role = await roleRepository.createQueryBuilder('role')
-                .leftJoinAndSelect('role.permissions', 'permissions')
-                .leftJoinAndSelect('role.users', 'users')
-                .where(clause)
-                .getOne();
 
-            return Promise.resolve(role);
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        return roleRepository.createQueryBuilder('role')
+            .leftJoinAndSelect('role.permissions', 'permissions')
+            .leftJoinAndSelect('role.users', 'users')
+            .where(clause)
+            .getOne();
     }
 
-    static async update(role : Role) : Promise<boolean> {
+    static async update(role: Role): Promise<boolean> {
         const roleRepository = MySQLService.connection.getRepository(Role);
-        let update = _.omit(role, [
-            'permissions',
-            'users'
-        ]);
 
         RoleService.auditLog.info('Role updated: %j', role);
-        
-        try {
-            await roleRepository.persist(role);
+        await roleRepository.save(role);
 
-            return Promise.resolve(true);
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        return true;
     }
 
     static async delete(role : Role) : Promise<boolean> {
         const roleRepository = MySQLService.connection.getRepository(Role);
-        try {
-            await roleRepository.removeById(role.id);
+        await roleRepository.delete(role.id);
 
-            RoleService.auditLog.info('Role deleted: %j', role);
-            
-            return Promise.resolve(true);
-        } catch (error) {
-            return Promise.reject(error);
-        }
+        RoleService.auditLog.info('Role deleted: %j', role);
+        
+        return true;
     }
 }

@@ -2,12 +2,25 @@ version: '2.1'
 
 services:
   shingo-auth-api:
-    image: shingo-auth-api
-    build: .
+    image: docker.shingo.org/shingo-auth-api:local
+    build:
+      context: .
+      target: debug
     environment:
       NODE_ENV: development
+    networks:
+      shingo-dev-net:
+        aliases:
+          - "shingo-auth-api"
+      default:
+    volumes:
+      - ./build:/build
     ports:
-      - 80:80
-      - 9229:9229
+      - "${PORT:-8080}:80"
+      - "${INSPECT_PORT:-9229}:9229"
     ## set your startup file here
-    command: node --inspect index.js
+    command: npm run debug
+
+networks:
+  shingo-dev-net:
+    external: true
