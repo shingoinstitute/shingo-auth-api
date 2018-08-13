@@ -8,6 +8,11 @@ services:
       target: debug
     environment:
       NODE_ENV: development
+      MYSQL_URL:
+      MYSQL_AUTH_USER:
+      MYSQL_AUTH_PASS:
+      MYSQL_AUTH_DB:
+      MYSQL_PORT:
     networks:
       shingo-dev-net:
         aliases:
