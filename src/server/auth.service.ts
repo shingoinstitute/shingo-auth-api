@@ -1,6 +1,6 @@
 import { loggerFactory } from '../shared/logger.service'
-import { Permission, User, Role, jwtSecret } from './database/mysql.service'
-import { Credentials, UserService } from './user.service'
+import { User, Role, jwtSecret } from './database/mysql.service'
+import { UserService } from './user.service'
 import { PermissionService } from './permission.service'
 import * as scrypt from 'scrypt'
 import _ from 'lodash'
@@ -8,28 +8,6 @@ import * as jwt from 'jsonwebtoken'
 import { NotFoundError } from '../shared/util'
 import { Service } from 'typedi'
 import * as M from '../shared/messages'
-
-export interface AccessRequest {
-    resource: string,
-    level: number,
-    jwt: string
-}
-
-export interface GrantRequest {
-    resource: string,
-    level: number,
-    accessorId: number
-}
-
-export interface PermissionSet {
-    permissionId: number,
-    accessorId: number
-}
-
-export interface LoginAsRequest {
-    adminId: number,
-    userId: number
-}
 
 @Service()
 export class AuthService {
@@ -40,7 +18,7 @@ export class AuthService {
   constructor(private userService: UserService,
               private permissionService: PermissionService) {}
 
-  async login(creds: Credentials): Promise<M.User> {
+  async login(creds: M.Credentials): Promise<M.User> {
     try {
       let user = await this.userService.readOne(`user.email='${creds.email}'`)
 
@@ -62,7 +40,7 @@ export class AuthService {
           expires: new Date(new Date().getTime() + 60000000),
         }, jwtSecret)
 
-      user = _.omit(user, ['password'])
+      user = _.omit(user, ['password']) as User
       user.lastLogin = new Date().toUTCString()
 
       await this.userService.update(_.omit(user, ['permissions', 'roles']))
@@ -83,7 +61,7 @@ export class AuthService {
         return Promise.resolve(false)
     }
 
-    const decoded = jwt.verify(token, jwtSecret)
+    const decoded = jwt.verify(token, jwtSecret) as { user: string, expires: Date } | string
     if (typeof decoded === 'string') {
       this.auditLog.warn('[INVALID_TOKEN] isValid returned false' + token)
       return false
@@ -103,7 +81,7 @@ export class AuthService {
     return true
   }
 
-  async canAccess(accessRequest: AccessRequest): Promise<boolean> {
+  async canAccess(accessRequest: M.AccessRequest): Promise<boolean> {
     const user = await this.userService.readOne(`user.jwt='${accessRequest.jwt}'`)
 
     if (typeof user === 'undefined') {
@@ -129,7 +107,7 @@ export class AuthService {
     return false
   }
 
-  async grantToUser(grantRequest: GrantRequest): Promise<PermissionSet> {
+  async grantToUser(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
     let permission =
       await this.permissionService
                 .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
@@ -138,14 +116,14 @@ export class AuthService {
       permission = await this.permissionService.create({ resource: grantRequest.resource, level: grantRequest.level })
     }
 
-    permission.users.push({ id: grantRequest.accessorId } as User)
+    permission.users.push({ id: grantRequest.accessorId } as any)
     await this.permissionService.update(_.omit(permission, ['roles']))
     this.auditLog.info('[USER]  Permission Grant Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
 
-  async grantToRole(grantRequest: GrantRequest): Promise<PermissionSet> {
+  async grantToRole(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
     let permission =
       await this.permissionService
                 .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
@@ -154,14 +132,14 @@ export class AuthService {
       permission = await this.permissionService.create({ resource: grantRequest.resource, level: grantRequest.level })
     }
 
-    permission.roles.push({ id: grantRequest.accessorId } as Role)
+    permission.roles.push({ id: grantRequest.accessorId } as any)
     await this.permissionService.update(_.omit(permission, ['users']))
     this.auditLog.info('[ROLE]  Permission Grant Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
 
-  async revokeFromUser(grantRequest: GrantRequest): Promise<PermissionSet> {
+  async revokeFromUser(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
     const permission =
       await this.permissionService
                 .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
@@ -175,7 +153,7 @@ export class AuthService {
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
 
-  async revokeFromRole(grantRequest: GrantRequest): Promise<PermissionSet> {
+  async revokeFromRole(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
     const permission =
       await this.permissionService
                 .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
@@ -189,7 +167,7 @@ export class AuthService {
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
 
-  async loginAs(loginAsRequest: LoginAsRequest): Promise<User> {
+  async loginAs(loginAsRequest: M.LoginAsRequest): Promise<User> {
     const user = await this.userService.readOne(`user.id='${loginAsRequest.userId}'`)
 
     if (!user) {

@@ -34,3 +34,5 @@ export const handleUnary =
         cb(new SError(error), null)
       })
   }
+
+export const undefinedToNull = <T>(o: T | undefined): T | null => typeof o === 'undefined' ? null : o

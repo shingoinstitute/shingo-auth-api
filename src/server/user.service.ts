@@ -7,17 +7,13 @@ import { NotFoundError } from '../shared/util'
 import { Service } from 'typedi'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
-import * as Messages from '../shared/messages'
+import * as M from '../shared/messages'
 
-export interface Credentials {
-    email: string,
-    password: string,
-    services?: string
-}
-
-export interface RoleOperation {
-    userEmail: string,
-    roleId: number
+export interface UserCreateData {
+  email: string
+  password: string
+  services: string
+  extId: string
 }
 
 @Service()
@@ -27,22 +23,21 @@ export class UserService {
 
   constructor(@InjectRepository(User) private userRepository: Repository<User>) {}
 
-  async create(creds: { email: string,
-                        password: string,
-                        services: string,
-                        extId: string
-                      }): Promise<_.Omit<User, 'password'>> {
+  async create(data: Partial<UserCreateData>): Promise<_.Omit<User, 'password'>> {
+    if (!data.email || !data.password || !data.services || !data.extId) {
+      throw new Error('Invalid user creation data')
+    }
     const user = new User()
-    user.email = creds.email
-    user.password = (await scrypt.kdfSync(creds.password, scrypt.paramsSync(0.1))).toString('base64')
-    user.services = creds.services
+    user.email = data.email
+    user.password = (await scrypt.kdf(data.password, scrypt.paramsSync(0.1))).toString('base64')
+    user.services = data.services
 
     user.jwt = jwt.sign({
       user: `${user.id}:${user.email}:${user.password}`,
       expires: new Date(new Date().getTime() + 600000),
     }, jwtSecret)
 
-    user.extId = creds.extId
+    user.extId = data.extId
 
     const created = await this.userRepository.save(user)
     const returned = { ..._.omit(created, ['password']), permissions: [], roles: [] }
@@ -71,7 +66,7 @@ export class UserService {
         .getOne()
   }
 
-  async update(updateData: Messages.User): Promise<boolean> {
+  async update(updateData: M.User): Promise<boolean> {
     const existingUser = typeof updateData.id !== 'undefined'
         ? await this.userRepository.findOne(updateData.id)
         : await this.userRepository.findOne({ extId: updateData.extId })
@@ -104,7 +99,7 @@ export class UserService {
     })
   }
 
-  async delete(user: Messages.User): Promise<boolean> {
+  async delete(user: M.User): Promise<boolean> {
     if (typeof user.id === 'undefined' && user.extId) {
       const oldUser = await this.userRepository.findOne({ extId: user.extId })
       if (typeof oldUser === 'undefined') {
@@ -121,7 +116,7 @@ export class UserService {
     })
   }
 
-  async addRole(roleOp: RoleOperation): Promise<boolean> {
+  async addRole(roleOp: M.RoleOperation): Promise<boolean> {
     const userEmail = roleOp.userEmail
     const roleId = roleOp.roleId
     this.auditLog.info('Trying to add role to user: %j', roleOp)
@@ -143,7 +138,7 @@ export class UserService {
     })
   }
 
-  async removeRole(roleOp: RoleOperation): Promise<boolean> {
+  async removeRole(roleOp: M.RoleOperation): Promise<boolean> {
     const userEmail = roleOp.userEmail
     const roleId = roleOp.roleId
 

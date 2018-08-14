@@ -4,8 +4,8 @@ import { loggerFactory } from '../shared/logger.service'
 import { RequireKeys } from '../shared/util'
 import { Repository } from 'typeorm'
 import { InjectRepository } from 'typeorm-typedi-extensions'
-import { Service, Inject } from 'typedi'
-import * as Messages from '../shared/messages'
+import { Service } from 'typedi'
+import * as M from '../shared/messages'
 
 @Service()
 export class PermissionService {
@@ -14,14 +14,14 @@ export class PermissionService {
 
   constructor(@InjectRepository(Permission) private permissionRepository: Repository<Permission>) {}
 
-  async create(permission: { resource: string, level: Level }): Promise<Messages.Permission> {
+  async create(permission: { resource: string, level: Level }): Promise<M.Permission> {
     return this.permissionRepository.create(permission).save().then(p => {
       this.auditLog.info('Permission created: %j', permission)
       return p
     })
   }
 
-  async read(clause: string): Promise<Messages.Permission[]> {
+  async read(clause: string): Promise<M.Permission[]> {
     return this.permissionRepository.createQueryBuilder('permission')
       .leftJoinAndSelect('permission.users', 'users')
       .leftJoinAndSelect('permission.roles', 'roles')
@@ -29,7 +29,7 @@ export class PermissionService {
       .getMany()
   }
 
-  async readOne(clause: string): Promise<Messages.Permission | undefined> {
+  async readOne(clause: string): Promise<M.Permission | undefined> {
     return this.permissionRepository.createQueryBuilder('permission')
       .leftJoinAndSelect('permission.users', 'users')
       .leftJoinAndSelect('permission.roles', 'roles')
@@ -37,7 +37,7 @@ export class PermissionService {
       .getOne()
   }
 
-  async update(permission: RequireKeys<Partial<Messages.Permission>, 'id'>): Promise<boolean> {
+  async update(permission: RequireKeys<Partial<M.Permission>, 'id'>): Promise<boolean> {
     return this.permissionRepository.save(permission).then(() => {
       this.auditLog.info('Permisson updated: %j', permission)
       return true
@@ -45,7 +45,7 @@ export class PermissionService {
 
   }
 
-  async delete(permission: Messages.Permission): Promise<boolean> {
+  async delete(permission: M.Permission): Promise<boolean> {
       const id = await (
           typeof permission.id === 'undefined'
           ? this.permissionRepository

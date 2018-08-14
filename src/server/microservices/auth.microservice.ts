@@ -5,7 +5,7 @@ import { UserService, PermissionService, RoleService, AuthService } from '../ind
 import * as M from '../../shared/messages'
 import { Options as ProtoOptions, loadSync } from '@grpc/proto-loader'
 import { Service } from 'typedi'
-import { handleUnary } from '../../shared/util'
+import { handleUnary, undefinedToNull } from '../../shared/util'
 
 const log = loggerFactory()
 
@@ -74,7 +74,9 @@ export class AuthMicroservice implements ServiceImplementation {
     )
 
     // Get a single user based on a TypeORM query
-    readOneUser = makeUnaryCall('readOneUser', (req: M.QueryRequest) => this.userService.readOne(req.clause))
+    readOneUser = makeUnaryCall('readOneUser', (req: M.QueryRequest) =>
+      this.userService.readOne(req.clause).then(undefinedToNull)
+    )
 
     // Update a user (requires user.id)
     updateUser = makeUnaryCall('updateUser', (req: M.User) =>
@@ -112,7 +114,7 @@ export class AuthMicroservice implements ServiceImplementation {
 
     // Get a single permission based on a TypeORM query
     readOnePermission = makeUnaryCall('readOnePermission', (req: M.QueryRequest) =>
-      this.permissionService.readOne(req.clause)
+      this.permissionService.readOne(req.clause).then(undefinedToNull)
     )
 
     // Update a permission (requires permission.id)
@@ -140,7 +142,7 @@ export class AuthMicroservice implements ServiceImplementation {
 
     // Get a single role based on a TypeORM query
     readOneRole = makeUnaryCall('readOneRole', (req: M.QueryRequest) =>
-      this.roleService.readOne(req.clause)
+      this.roleService.readOne(req.clause).then(undefinedToNull)
     )
 
     // Update a role (requires role.id)

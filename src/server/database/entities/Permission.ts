@@ -7,19 +7,19 @@ export enum Level { Deny = 0, Read = 1, Write = 2 }
 export class Permission extends BaseEntity {
 
     @PrimaryGeneratedColumn()
-    id!: number;
+    id!: number
 
     @Column('string')
-    resource!: string;
-    
+    resource!: string
+
     @Column('int')
-    level!: Level; // 0 - deny, 1 - read, 2 - write
+    level!: Level // 0 - deny, 1 - read, 2 - write
 
     @ManyToMany(_type => Role, role => role.permissions)
     @JoinTable()
-    roles: Role[] = [];
+    roles!: Role[]
 
     @ManyToMany(_type => User, user => user.permissions)
     @JoinTable()
-    users: User[] = [];
+    users!: User[]
 }
