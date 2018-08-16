@@ -2,6 +2,7 @@ import { createConnection, ConnectionOptions, useContainer } from 'typeorm'
 import { Permission, Role, User, Level } from './entities'
 import { loggerFactory } from '../../shared/logger.service'
 import { Container as TypeDiContainer } from 'typedi'
+import { join } from 'path'
 
 export { Permission, Role, User, Level }
 
@@ -19,7 +20,7 @@ export const mysqlConnection = (env: MySQLEnvironment, log = loggerFactory()) =>
   const port = env.MYSQL_PORT && parseInt(env.MYSQL_PORT.toString(), 10) || 3306
   const options: ConnectionOptions = {
     type: 'mysql',
-    host: process.env.MYSQL_URL || 'localhost',
+    host: env.MYSQL_URL || 'localhost',
     port,
     username: env.MYSQL_AUTH_USER,
     password: env.MYSQL_AUTH_PASS,
@@ -29,13 +30,13 @@ export const mysqlConnection = (env: MySQLEnvironment, log = loggerFactory()) =>
       Role,
       User,
     ],
+    logging: process.env.NODE_ENV !== 'production',
+    logger: 'advanced-console',
+    migrations: [ join(__dirname, './migrations') ],
     synchronize: process.env.NODE_ENV !== 'production',
   }
 
   useContainer(TypeDiContainer)
 
-  return createConnection(options).catch(err => {
-    log.error('Error in MySQLService.init(): %j', err)
-    throw err
-  })
+  return createConnection(options)
 }

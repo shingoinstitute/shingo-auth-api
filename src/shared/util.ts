@@ -1,6 +1,7 @@
 import { LoggerInstance } from 'winston'
 import { handleUnaryCall, ServiceError, Metadata, status as Status } from 'grpc'
 
+export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
 export class NotFoundError extends Error {
   name = 'NOT_FOUND'
 }
@@ -18,7 +19,12 @@ export class SError extends Error implements ServiceError {
     this.message = error.message
     this.name = error.name || 'Error'
     this.metadata = new Metadata()
-    this.metadata.add('error-bin', Buffer.from(JSON.stringify(error)))
+    this.metadata.add('error-bin',
+      Buffer.from(error instanceof Error
+        ? JSON.stringify(error, Object.getOwnPropertyNames(error))
+        : JSON.stringify(error)
+      )
+    )
     this.code = status || Status.INTERNAL
   }
 }
@@ -30,9 +36,31 @@ export const handleUnary =
     fn(call.request)
       .then(record => cb(null, record))
       .catch(error => {
-        logger.error(`Error in ${name}(): %j`, error)
+        logger.error(`Error in ${name}(): `, error)
         cb(new SError(error), null)
       })
   }
 
 export const undefinedToNull = <T>(o: T | undefined): T | null => typeof o === 'undefined' ? null : o
+
+/**
+ * Binds all methods on an object using Proxy
+ * from https://ponyfoo.com/articles/binding-methods-to-class-instance-objects
+ * @param obj The object
+ */
+export const bindAll = <T extends object>(obj: T): T => {
+  const cache = new WeakMap()
+  const handler: ProxyHandler<T> = {
+    get(target, key) {
+      const value = Reflect.get(target, key)
+      if (typeof value !== 'function') {
+        return value
+      }
+      if (!cache.has(value)) {
+        cache.set(value, value.bind(target))
+      }
+      return cache.get(value)
+    },
+  }
+  return new Proxy(obj, handler)
+}

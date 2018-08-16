@@ -7,6 +7,11 @@ import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Service } from 'typedi'
 import * as M from '../shared/messages'
 
+export interface PermissionCreateData {
+  resource: string
+  level: Level
+}
+
 @Service()
 export class PermissionService {
 
@@ -14,13 +19,14 @@ export class PermissionService {
 
   constructor(@InjectRepository(Permission) private permissionRepository: Repository<Permission>) {}
 
-  async create(permission: { resource: string, level: Level }): Promise<M.Permission> {
+  async create(permission: PermissionCreateData): Promise<M.Permission> {
     return this.permissionRepository.create(permission).save().then(p => {
       this.auditLog.info('Permission created: %j', permission)
       return p
     })
   }
 
+  // FIXME: Possible SQL Injection
   async read(clause: string): Promise<M.Permission[]> {
     return this.permissionRepository.createQueryBuilder('permission')
       .leftJoinAndSelect('permission.users', 'users')
@@ -29,6 +35,7 @@ export class PermissionService {
       .getMany()
   }
 
+  // FIXME: Possible SQL Injection
   async readOne(clause: string): Promise<M.Permission | undefined> {
     return this.permissionRepository.createQueryBuilder('permission')
       .leftJoinAndSelect('permission.users', 'users')
@@ -38,8 +45,8 @@ export class PermissionService {
   }
 
   async update(permission: RequireKeys<Partial<M.Permission>, 'id'>): Promise<boolean> {
-    return this.permissionRepository.save(permission).then(() => {
-      this.auditLog.info('Permisson updated: %j', permission)
+    return this.permissionRepository.save(permission).then(data => {
+      this.auditLog.info('Permisson updated. patch: %j, new: %j', permission, data)
       return true
     })
 
@@ -56,7 +63,7 @@ export class PermissionService {
 
       if (!id) return true
 
-      return this.permissionRepository.delete(id).then(() => {
+      return this.permissionRepository.remove(this.permissionRepository.create({ id })).then(() => {
         this.auditLog.info('Permission deleted: %j', permission)
         return true
       })

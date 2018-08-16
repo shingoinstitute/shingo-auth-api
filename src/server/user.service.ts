@@ -23,50 +23,54 @@ export class UserService {
 
   constructor(@InjectRepository(User) private userRepository: Repository<User>) {}
 
-  async create(data: Partial<UserCreateData>): Promise<_.Omit<User, 'password'>> {
-    if (!data.email || !data.password || !data.services || !data.extId) {
+  async create(createData: Partial<UserCreateData>): Promise<User> {
+    if (!createData.email || !createData.password || !createData.services || !createData.extId) {
       throw new Error('Invalid user creation data')
     }
     const user = new User()
-    user.email = data.email
-    user.password = (await scrypt.kdf(data.password, scrypt.paramsSync(0.1))).toString('base64')
-    user.services = data.services
+    user.email = createData.email
+    user.password = (await scrypt.kdf(createData.password, scrypt.paramsSync(0.1))).toString('base64')
+    user.services = createData.services
 
+    // FIXME: We are leaking passwords. JWTs are not encrypted
+    // FIXME: Why the heck is this being stored in a database - jwts are supposed to be session/memory only
     user.jwt = jwt.sign({
       user: `${user.id}:${user.email}:${user.password}`,
       expires: new Date(new Date().getTime() + 600000),
     }, jwtSecret)
 
-    user.extId = data.extId
+    user.extId = createData.extId
 
-    const created = await this.userRepository.save(user)
-    const returned = { ..._.omit(created, ['password']), permissions: [], roles: [] }
-
-    this.auditLog.info('User created: %j', returned)
-
-    return returned
+    return this.userRepository.save(user).then(data => {
+      this.auditLog.info('User created %j', data)
+      return data
+    })
   }
 
+  // FIXME: Possible SQL Injection
   async read(clause: string): Promise<User[]> {
     return this.userRepository
         .createQueryBuilder('user')
         .leftJoinAndSelect('user.permissions', 'permissions')
         .leftJoinAndSelect('user.roles', 'roles')
-        .leftJoinAndSelect('roles.permissions', 'roles.permissions')
+        .leftJoinAndSelect('roles.permissions', 'role_perms')
         .where(clause)
         .getMany()
   }
 
+  // FIXME: Possible SQL Injection
   async readOne(clause: string): Promise<User | undefined> {
     return this.userRepository.createQueryBuilder('user')
         .leftJoinAndSelect('user.permissions', 'permissions')
         .leftJoinAndSelect('user.roles', 'roles')
-        .leftJoinAndSelect('roles.permissions', 'roles.permissions')
+        .leftJoinAndSelect('roles.permissions', 'role_perms')
         .where(clause)
         .getOne()
   }
 
-  async update(updateData: M.User): Promise<boolean> {
+  async update(updateData: Partial<M.User>): Promise<boolean> {
+    this.auditLog.debug('Update data: %j', updateData)
+
     const existingUser = typeof updateData.id !== 'undefined'
         ? await this.userRepository.findOne(updateData.id)
         : await this.userRepository.findOne({ extId: updateData.extId })
@@ -93,13 +97,13 @@ export class UserService {
 
     const update = { ...updateData, id: existingUser.id, ...newPassword, ...newJwt }
 
-    return this.userRepository.update(update.id, update).then(() => {
-      this.auditLog.info('User updated: %j', update)
+    return this.userRepository.save(this.userRepository.create(update)).then(data => {
+      this.auditLog.info('User updated. patch: %j, new: %j', update, data)
       return true
     })
   }
 
-  async delete(user: M.User): Promise<boolean> {
+  async delete(user: Partial<M.User>): Promise<boolean> {
     if (typeof user.id === 'undefined' && user.extId) {
       const oldUser = await this.userRepository.findOne({ extId: user.extId })
       if (typeof oldUser === 'undefined') {
@@ -117,44 +121,43 @@ export class UserService {
   }
 
   async addRole(roleOp: M.RoleOperation): Promise<boolean> {
-    const userEmail = roleOp.userEmail
-    const roleId = roleOp.roleId
-    this.auditLog.info('Trying to add role to user: %j', roleOp)
+    const { userEmail, roleId } = roleOp
 
-    const user = await this.userRepository.createQueryBuilder('user')
-        .leftJoinAndSelect('user.roles', 'roles')
-        .where(`user.email='${userEmail}'`)
-        .getOne()
+    this.auditLog.debug('Trying to add role to user: %j', roleOp)
+
+    const user = await this.userRepository.findOne(
+      { email: userEmail }, { relations: ['roles'], loadEagerRelations: false }
+    )
 
     if (typeof user === 'undefined') throw new NotFoundError('Email Not Found')
 
-    delete user.permissions
+    const updateData = {
+      id: user.id,
+      roles: [...(user.roles || []), { id: roleId }],
+    }
 
-    user.roles.push({ id: roleId } as any)
-
-    return this.userRepository.save(user).then(() => {
+    return this.userRepository.save(updateData).then(() => {
       this.auditLog.info('User role added: %j', roleOp)
       return true
     })
   }
 
   async removeRole(roleOp: M.RoleOperation): Promise<boolean> {
-    const userEmail = roleOp.userEmail
-    const roleId = roleOp.roleId
+    const { userEmail, roleId } = roleOp
 
-    const user = await this.userRepository.createQueryBuilder('user')
-        .leftJoinAndSelect('user.roles', 'roles')
-        .where(`user.email='${userEmail}'`)
-        .getOne()
+    const user = await this.userRepository.findOne(
+      { email: userEmail }, { relations: ['roles'], loadEagerRelations: false }
+    )
 
     if (typeof user === 'undefined') throw new NotFoundError('Email Not Found')
 
-    user.roles = user.roles.filter(role => role.id !== roleId)
+    const updateData = {
+      id: user.id,
+      roles: (user.roles || []).filter(role => role.id !== roleId),
+    }
 
-    delete user.permissions
-
-    return this.userRepository.save(user).then(() => {
-      this.auditLog.info('User role removed: %j', user)
+    return this.userRepository.save(updateData).then(data => {
+      this.auditLog.info('User role removed: %j', data)
       return true
     })
   }

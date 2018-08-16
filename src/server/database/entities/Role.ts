@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable } from 'typeorm'
 import { Permission } from './Permission'
 import { User } from './User'
+import { Type } from 'class-transformer'
 
 @Entity()
 export class Role {
@@ -11,13 +12,15 @@ export class Role {
     @Column('text')
     name!: string
 
-    @Column('string')
+    @Column()
     service!: string
 
-    @ManyToMany(_type => Permission, permission => permission.roles)
+    @Type(() => Permission)
+    @ManyToMany(_type => Permission, permission => permission.roles, { eager: true })
+    @JoinTable()
     permissions!: Permission[]
 
+    @Type(() => User)
     @ManyToMany(_type => User, user => user.roles)
-    @JoinTable()
     users!: User[]
 }

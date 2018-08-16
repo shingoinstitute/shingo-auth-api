@@ -25,7 +25,7 @@ service AuthService {
 
     rpc CreatePermission(Permission) returns (Permission) {}
 
-    rpc ReadPermission(QueryRequest) returns (Permission) {}
+    rpc ReadPermission(QueryRequest) returns (PermissionBatch) {}
 
     rpc ReadOnePermission(QueryRequest) returns (Permission) {}
 

@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm'
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable } from 'typeorm'
 import { Role } from './Role'
 import { Permission } from './Permission'
+import { Exclude, Type } from 'class-transformer'
 
 @Entity()
 export class User {
@@ -14,6 +15,7 @@ export class User {
     @Column({ unique: true, length: '255' })
     email!: string
 
+    @Exclude({ toPlainOnly: true })
     @Column({ length: '255' })
     password!: string
 
@@ -29,12 +31,16 @@ export class User {
     @Column({ nullable: true, length: '255' })
     lastLogin!: string
 
-    @ManyToMany(_type => Role, role => role.users)
+    @Type(() => Role)
+    @ManyToMany(_type => Role, role => role.users, { eager: true })
+    @JoinTable()
     roles!: Role[]
 
     @Column({ default: '' })
     services!: string
 
-    @ManyToMany(_type => Permission, permission => permission.users)
+    @Type(() => Permission)
+    @ManyToMany(_type => Permission, permission => permission.users, { eager: true })
+    @JoinTable()
     permissions!: Permission[]
 }

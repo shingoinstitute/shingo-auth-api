@@ -8,6 +8,10 @@ import * as jwt from 'jsonwebtoken'
 import { NotFoundError } from '../shared/util'
 import { Service } from 'typedi'
 import * as M from '../shared/messages'
+import { InjectRepository } from 'typeorm-typedi-extensions'
+import { Repository } from 'typeorm'
+
+// This api is full of potential sql injection :(
 
 @Service()
 export class AuthService {
@@ -15,46 +19,46 @@ export class AuthService {
   private log = loggerFactory()
   private auditLog = loggerFactory('auth-api.audit.log')
 
-  constructor(private userService: UserService,
+  constructor(@InjectRepository(User) private userRepository: Repository<User>,
+              private userService: UserService,
               private permissionService: PermissionService) {}
 
   async login(creds: M.Credentials): Promise<M.User> {
-    try {
-      let user = await this.userService.readOne(`user.email='${creds.email}'`)
+    const user = await this.userRepository.findOne({ email: creds.email })
 
-      if (typeof user === 'undefined') {
-          this.auditLog.warn('[EMAIL_NOT_FOUND] Invalid log in attempt: ' + creds.email + '@' + creds.services)
-          throw new Error('EMAIL_NOT_FOUND')
-      }
-
-      const matches = await scrypt.verifyKdf(new Buffer(user.password, 'base64'), creds.password)
-
-      if (!matches) {
-          this.auditLog.warn('[INVALID_PASSWORD] Invalid log in attempt: ' + creds.email + '@' + creds.services)
-          throw new Error('INVALID_PASSWORD')
-      }
-
-      user.jwt =
-        jwt.sign({
-          user: `${user.id}:${user.email}:${user.password}`,
-          expires: new Date(new Date().getTime() + 60000000),
-        }, jwtSecret)
-
-      user = _.omit(user, ['password']) as User
-      user.lastLogin = new Date().toUTCString()
-
-      await this.userService.update(_.omit(user, ['permissions', 'roles']))
-      this.auditLog.info('Successful login: ' + creds.email + '@' + creds.services)
-      return user
-    } catch (error) {
-      this.log.error('Error logging in: ', error)
-      throw error
+    if (typeof user === 'undefined') {
+        this.auditLog.warn('[EMAIL_NOT_FOUND] Invalid log in attempt: ' + creds.email + '@' + creds.services)
+        throw new Error('EMAIL_NOT_FOUND')
     }
+
+    const matches = await scrypt.verifyKdf(new Buffer(user.password, 'base64'), creds.password)
+
+    if (!matches) {
+        this.auditLog.warn('[INVALID_PASSWORD] Invalid log in attempt: ' + creds.email + '@' + creds.services)
+        throw new Error('INVALID_PASSWORD')
+    }
+
+    const updateData = {
+      id: user.id,
+      jwt: jwt.sign({
+        user: `${user.id}:${user.email}:${user.password}`,
+        expires: new Date(new Date().getTime() + 60000000),
+      }, jwtSecret),
+      lastLogin: new Date().toUTCString(),
+    }
+
+    await this.userService.update(updateData)
+    this.auditLog.info('Successful login: ' + creds.email + '@' + creds.services)
+
+    user.jwt = updateData.jwt
+    user.lastLogin = updateData.lastLogin
+
+    return user
   }
 
   async isValid(token: string): Promise<boolean> {
     if (token === '' || typeof token === 'undefined') throw new Error('INVALID_TOKEN')
-    const user = await this.userService.readOne(`user.jwt='${token}'`)
+    const user = await this.userRepository.findOne({ jwt: token }, { loadEagerRelations: false })
 
     if (!user) {
         this.auditLog.warn('[INVALID_TOKEN] isValid returned false' + token)
@@ -81,59 +85,68 @@ export class AuthService {
     return true
   }
 
+  private userHasAccess(user: User, ...reqs: M.AccessRequest[]): M.AccessRequest[] {
+    const permissions = (user.permissions || []).concat(...(user.roles || []).map(r => r.permissions || []))
+    // if some permission fills the requirements for the request, then filter that request into the new array
+    return reqs.filter(r => permissions.some(p => p.resource === r.resource && p.level >= r.level))
+  }
+
   async canAccess(accessRequest: M.AccessRequest): Promise<boolean> {
-    const user = await this.userService.readOne(`user.jwt='${accessRequest.jwt}'`)
+    const user = await this.userRepository.findOne({ jwt: accessRequest.jwt })
 
     if (typeof user === 'undefined') {
         this.auditLog.warn('[USER_NOT_FOUND]  accessRequest denied: %j', accessRequest)
         return false
     }
 
-    let permissions = user.permissions
+    const accepted = this.userHasAccess(user, accessRequest)
 
-    for (const role of user.roles) {
-        permissions = permissions.concat(role.permissions)
+    if (accepted.length > 0) {
+      this.auditLog.info('accessRequest accepted: %j', accessRequest)
+    } else {
+      this.auditLog.warn('[NO_PERMISSION_FOUND]  accessRequest denied: %j', accessRequest)
     }
 
-    for (const permission of permissions) {
-        if (permission.resource === accessRequest.resource && permission.level >= accessRequest.level) {
-            this.auditLog.info('accessRequest accepted: %j', accessRequest)
-            return true
-        }
-    }
-
-    this.auditLog.warn('[NO_PERMISSION_FOUND]  accessRequest denied: %j', accessRequest)
-
-    return false
+    return accepted.length > 0
   }
 
   async grantToUser(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
-    let permission =
-      await this.permissionService
-                .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
+    const permission = await (
+    // FIXME: Possible SQL Injection
+      this.permissionService
+            .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
+            .then(p => typeof p === 'undefined'
+              ? this.permissionService.create({ resource: grantRequest.resource, level: grantRequest.level })
+              : p)
+    )
 
-    if (typeof permission === 'undefined') {
-      permission = await this.permissionService.create({ resource: grantRequest.resource, level: grantRequest.level })
+    const updateData = {
+      id: permission.id,
+      users: [...(permission.users || []), { id: grantRequest.accessorId } as any],
     }
 
-    permission.users.push({ id: grantRequest.accessorId } as any)
-    await this.permissionService.update(_.omit(permission, ['roles']))
+    await this.permissionService.update(updateData)
     this.auditLog.info('[USER]  Permission Grant Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
 
   async grantToRole(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
-    let permission =
-      await this.permissionService
-                .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
+    const permission = await (
+    // FIXME: Possible SQL Injection
+      this.permissionService
+            .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
+            .then(p => typeof p === 'undefined'
+              ? this.permissionService.create({ resource: grantRequest.resource, level: grantRequest.level })
+              : p)
+    )
 
-    if (typeof permission === 'undefined') {
-      permission = await this.permissionService.create({ resource: grantRequest.resource, level: grantRequest.level })
+    const updateData = {
+      id: permission.id,
+      roles: [...(permission.roles || []), { id: grantRequest.accessorId } as any],
     }
 
-    permission.roles.push({ id: grantRequest.accessorId } as any)
-    await this.permissionService.update(_.omit(permission, ['users']))
+    await this.permissionService.update(updateData)
     this.auditLog.info('[ROLE]  Permission Grant Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
@@ -141,13 +154,18 @@ export class AuthService {
 
   async revokeFromUser(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
     const permission =
+    // FIXME: Possible SQL Injection
       await this.permissionService
                 .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
 
     if (typeof permission === 'undefined') throw new Error('PERMISSION_NOT_FOUND')
 
-    permission.users = permission.users.filter(user => user.id !== grantRequest.accessorId)
-    await this.permissionService.update(_.omit(permission, ['roles']))
+    const updateData = {
+      id: permission.id,
+      users: permission.users.filter(user => user.id !== grantRequest.accessorId),
+    }
+
+    await this.permissionService.update(updateData)
     this.auditLog.info('[USER]  Permission Revoke Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
@@ -155,34 +173,72 @@ export class AuthService {
 
   async revokeFromRole(grantRequest: M.GrantRequest): Promise<M.PermissionSet> {
     const permission =
+    // FIXME: Possible SQL Injection
       await this.permissionService
                 .readOne(`permission.resource='${grantRequest.resource}' AND permission.level=${grantRequest.level}`)
 
     if (typeof permission === 'undefined') throw new Error('PERMISSION_NOT_FOUND')
 
-    permission.roles = permission.roles.filter(role => role.id !== grantRequest.accessorId)
-    await this.permissionService.update(_.omit(permission, ['users']))
+    const updateData = {
+      id: permission.id,
+      roles: permission.roles.filter(role => role.id !== grantRequest.accessorId),
+    }
+
+    await this.permissionService.update(updateData)
     this.auditLog.info('[ROLE]  Permission Revoke Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
 
   async loginAs(loginAsRequest: M.LoginAsRequest): Promise<User> {
-    const user = await this.userService.readOne(`user.id='${loginAsRequest.userId}'`)
+    const { adminId, userId } = loginAsRequest
+    const adminUser = await this.userRepository.findOneOrFail({ id: adminId })
 
-    if (!user) {
+    const requests: M.AccessRequest[] = [
+      {
+        resource: `user -- ${userId}`,
+        level: 1,
+        jwt: adminUser.jwt,
+        id: `${adminUser.id}`,
+      },
+      {
+        resource: `user -- all_users`,
+        level: 1,
+        jwt: adminUser.jwt,
+        id: `${adminUser.id}`,
+      },
+    ]
+
+    const hasPerm = this.userHasAccess(adminUser, ...requests).length > 0
+      // for backwards compatibility, Affiliate Manager essentially has full permissions to resource 'user -- all_users'
+      || (adminUser.roles || []).some(r => r.name === 'Affiliate Manager')
+
+    if (!hasPerm) {
+      this.log.error('User %d does not have sufficient permission to access \'user -- %d\'', adminId, userId)
+      throw new Error(`Invalid Permissions for 'user -- ${userId}'`)
+    }
+
+    const reqUser = await this.userRepository.findOne({ id: userId })
+
+    if (!reqUser) {
       throw new NotFoundError('Invalid User ID')
     }
 
-    user.jwt = jwt.sign({
-      user: `${user.id}:${user.email}:${user.password}`,
-      expires: new Date(new Date().getTime() + 60000000),
-    }, jwtSecret)
+    const updateData = {
+      id: reqUser.id,
+      jwt: jwt.sign({
+        user: `${reqUser.id}:${reqUser.email}:${reqUser.password}`,
+        expires: new Date(new Date().getTime() + 60000000),
+      }, jwtSecret),
+    }
 
-    await this.userService.update(_.omit(user, ['permissions', 'roles', 'password']))
+    await this.userService.update(updateData)
 
-    this.auditLog.info('Login As Request : %j', loginAsRequest)
-    return user
+    this.auditLog.info('Login As Request Successful: %j', loginAsRequest)
+
+    reqUser.jwt = updateData.jwt
+
+    return reqUser
   }
 
 }

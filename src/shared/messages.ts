@@ -1,6 +1,5 @@
 // these MUST match the message definitions in auth_services.proto
 // Ideally this file would be generated as part of a build step
-
 export interface QueryRequest {
   clause: string
 }
@@ -20,22 +19,22 @@ export interface Credentials {
 }
 
 export interface User {
-  id?: number
-  email?: string
-  jwt?: string
-  services?: string
-  permissions?: Permission[]
-  roles?: Role[]
-  isEnabled?: boolean
-  password?: string
-  extId?: string
-  resetToken?: string
-  lastLogin?: string
+  id: number
+  email: string
+  jwt: string
+  services: string
+  permissions: Permission[]
+  roles: Role[]
+  isEnabled: boolean
+  password: string
+  extId: string
+  resetToken: string
+  lastLogin: string
 }
 
 export interface AccessRequest {
   resource: string
-  level: number
+  level: 1 | 2
   jwt: string
   id: string
 }

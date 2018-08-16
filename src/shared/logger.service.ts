@@ -18,7 +18,9 @@ export const loggerFactory = (options?: string | LoggerFactoryOptions) => {
   const opts = typeof options === 'string' ? { name: options } : options
   const logPath = opts && opts.path || process.env.LOG_PATH || ''
   const logName = opts && opts.name || process.env.LOG_FILE || 'auth-api.log'
-  const logLevel = opts && opts.level || process.env.LOG_LEVEL || 'info'
+  const logLevel = process.env.NODE_ENV !== 'production'
+    ? 'silly'
+    : opts && opts.level || process.env.LOG_LEVEL || 'info'
 
   const logTransports = [
     new transports.Console({ colorize: true, prettyPrint: true, timestamp: true }),
