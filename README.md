@@ -14,7 +14,7 @@ In the future we may have a npm bin install. At that point you can install the s
 2. Import the `AuthClient` class from the index and instantiate with the server address:
 ```ts
   import { AuthClient } from '@shingo/shingo-auth-api'
-  const client = new SalesforceClient('api.shingo.org:1337')
+  const client = new AuthClient('api.shingo.org:1337')
   client.login({ email: 'blah@blah', password: 'asdf', services: 'some-service' }).then(res => {
     // do something
   })

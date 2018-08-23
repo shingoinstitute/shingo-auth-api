@@ -4,6 +4,10 @@
   "description": "Provide auth services for Shingo APIs",
   "main": "index.js",
   "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shingoinstitute/shingo-auth-api.git"
+  },
   "bin": {
     "shingo-auth-api-server": "./server/app.js"
   },
