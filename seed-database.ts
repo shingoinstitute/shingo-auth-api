@@ -1,8 +1,10 @@
 #! /usr/bin/env ts-node
-import { MySQLService, Role, User } from './src/database/mysql.service'
-import { RoleService, UserService } from './src/shared'
+import { mysqlConnection, Role, User } from './src/server/database/mysql.service'
+import { RoleService, UserService } from './src/server'
 import { readFile } from 'fs'
 import { promisify } from 'util'
+
+// tslint:disable:no-console
 
 const rf = promisify(readFile)
 
@@ -13,8 +15,49 @@ interface UserSeed {
   manager?: boolean
 }
 
+interface Args { file?: string, drop: boolean }
+
+const helpStr = `USAGE: seed-database.ts [Options] [FILE]
+Seeds the auth database using a file (specified by FILE) containing
+a JSON object matching the FileData type from the following schema:
+type UserSeed = { email: string, password: string, extId: string, manager?: boolean }
+type FileData = UserSeed | UserSeed[]
+
+Positional Arguments:
+    FILE    An optional file name. If FILE is not provided or FILE is '-', data is read from stdin
+
+Options:
+    --drop  Drop the database before seeding
+    --help  Show this help
+`
+
+const parseArgs = (): Args => {
+  const [execPath, executedFile, ...args] = process.argv
+  if (args.length > 3) {
+    console.log(helpStr)
+    process.exit(1)
+  }
+
+  const help = !!args.find(v => v === '--help')
+
+  if (help) {
+    console.log(helpStr)
+    process.exit(0)
+  }
+
+  const drop = !!args.find(v => v === '--drop')
+  const rest = args.filter(v => v !== '--drop')
+
+  if (rest.length > 1) {
+    console.log(helpStr)
+    process.exit(1)
+  }
+
+  return { file: rest[0], drop }
+}
+
 const readStdin = () => {
-  const stdin = process.stdin;
+  const stdin = process.stdin
   let data = ''
   if (stdin.isTTY) {
     console.log(`Enter JSON string of single object or array of objects with the following type:
@@ -26,12 +69,13 @@ End input with ctrl-d`)
     stdin.setEncoding('utf8')
     stdin.on('readable', () => {
       let chunk
+      // tslint:disable-next-line:no-conditional-assignment
       while (null !== (chunk = stdin.read())) {
         data += chunk
       }
     })
     stdin.on('end', () => {
-      res(data);
+      res(data)
     })
   })
 }
@@ -56,39 +100,42 @@ const parseUser = (p: Promise<string>) =>
       return [] as UserSeed[]
     })
 
-
+// tslint:disable-next-line:no-shadowed-variable
 const getUsers = (file: string | undefined) =>
-  parseUser(file === '-' || file === '' || !file
+  parseUser(file === '-' || !file
     ? readStdin()
     : rf(file, { encoding: 'utf8' }))
-
-const file = process.argv[2]
 
 const service = 'affiliate-portal'
 const roles = ['Facilitator', 'Affiliate Manager']
 
-const seed = async () => {
+const seed = async ({ file, drop }: Args) => {
   const users = await getUsers(file)
-  await MySQLService.init();
-  await MySQLService.connection.syncSchema(true)
+  const conn = await mysqlConnection(process.env as any)
+
+  await conn.synchronize(drop)
+
+  const roleService = new RoleService(conn.getRepository(Role))
+  const userService = new UserService(conn.getRepository(User))
 
   const aff = Promise.all(
-    roles.map(r => RoleService.create({ name: r, service } as Role))
+    roles.map(r => roleService.create({ name: r, service }))
   ).then(rs => rs.find(r => r.name === 'Affiliate Manager'))
 
-  const newUsersP =
+  const newUsersP = Promise.all(
     users
       .map(u => ({ ...u, services: service }))
-      .map(u => UserService.create(u as User))
+      .map(u => userService.create(u as User))
+  )
 
   // rather than awaiting our promises immediately, we let node determine
   // which to execute first, and just await right where we need the resolved values
   // not really useful for a small data set, but for hundreds of users it might be nice
   return Promise.all(
-    (await Promise.all(newUsersP))
-    .filter(u => !!users.find(us => us.email === u.email).manager)
-    .map(async u => UserService.addRole({ userEmail: u.email, roleId: (await aff).id }))
+    (await newUsersP)
+    .filter(u => !!users.find(us => us.email === u.email)!.manager)
+    .map(async u => userService.addRole({ userEmail: u.email, roleId: (await aff)!.id }))
   )
 }
 
-seed().then(() => process.exit())
+seed(parseArgs()).then(() => process.exit())
