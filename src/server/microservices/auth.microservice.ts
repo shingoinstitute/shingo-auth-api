@@ -28,8 +28,8 @@ export interface ServiceImplementation {
   readOneRole: grpc.handleUnaryCall<M.QueryRequest, M.Role>
   updateRole: grpc.handleUnaryCall<M.Role, M.BooleanResponse>
   deleteRole: grpc.handleUnaryCall<M.Role, M.BooleanResponse>
-  login: grpc.handleUnaryCall<M.Credentials, M.User>
-  isValid: grpc.handleUnaryCall<M.UserJWT, M.BooleanResponse>
+  login: grpc.handleUnaryCall<M.Credentials, M.UserJWT>
+  isValid: grpc.handleUnaryCall<M.UserJWT, M.IsValidResponse>
   canAccess: grpc.handleUnaryCall<M.AccessRequest, M.BooleanResponse>
   grantPermissionToUser: grpc.handleUnaryCall<M.GrantRequest, M.PermissionSet>
   grantPermissionToRole: grpc.handleUnaryCall<M.GrantRequest, M.PermissionSet>
@@ -56,8 +56,8 @@ export interface ServiceClient extends grpc.Client {
   readOneRole(req: Partial<M.QueryRequest>, cb: grpc.requestCallback<M.Role>): void
   updateRole(req: Partial<M.Role>, cb: grpc.requestCallback<M.BooleanResponse>): void
   deleteRole(req: Partial<M.Role>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  login(req: Partial<M.Credentials>, cb: grpc.requestCallback<M.User>): void
-  isValid(req: Partial<M.UserJWT>, cb: grpc.requestCallback<M.BooleanResponse>): void
+  login(req: Partial<M.Credentials>, cb: grpc.requestCallback<M.UserJWT>): void
+  isValid(req: Partial<M.UserJWT>, cb: grpc.requestCallback<M.IsValidResponse>): void
   canAccess(req: Partial<M.AccessRequest>, cb: grpc.requestCallback<M.BooleanResponse>): void
   grantPermissionToUser(req: Partial<M.GrantRequest>, cb: grpc.requestCallback<M.PermissionSet>): void
   grantPermissionToRole(req: Partial<M.GrantRequest>, cb: grpc.requestCallback<M.PermissionSet>): void
@@ -93,7 +93,7 @@ export class AuthMicroservice implements ServiceImplementation {
      ***************/
 
     // Create a new user
-    createUser = makeUnaryCall('createUser', (req: M.User) => this.userService.create(req) as any as Promise<M.User>)
+    createUser = makeUnaryCall('createUser', (req: M.User) => this.userService.create(req) as Promise<M.User>)
 
     // Get a list of users based on a TypeORM query
     readUser = makeUnaryCall('readUser', (req: M.QueryRequest) =>
@@ -187,12 +187,16 @@ export class AuthMicroservice implements ServiceImplementation {
      ***************/
     // Login a user based on email and password
     login = makeUnaryCall('login', (req: M.Credentials) =>
-      this.authService.login(req).then(u => classToPlain(u) as M.User)
+      this.authService.login(req).then(token => ({ token }))
     )
 
     // Checks if JSON Web Token is valid
     isValid = makeUnaryCall('isValid', (req: M.UserJWT) =>
-      this.authService.isValid(req.token).then(response => ({ response }))
+      this.authService.isValid(req.token).then(token =>
+        !token
+          ? { valid: false as false }
+          : { valid: true as true, token }
+        )
     )
 
     // Checks if user (via JWT) has permissions for resource at requested level

@@ -21,7 +21,6 @@ export interface Credentials {
 export interface User {
   id: number
   email: string
-  jwt: string
   services: string
   permissions: Permission[]
   roles: Role[]
@@ -32,10 +31,19 @@ export interface User {
   lastLogin: string
 }
 
+export type IsValidResponse = { valid: false } | { valid: true, token: JWTPayload }
+
+export interface JWTPayload {
+  /** the user's email */
+  email: string
+  /** An optional external salesforce id */
+  extId?: string
+}
+
 export interface AccessRequest {
   resource: string
   level: 1 | 2
-  jwt: string
+  email: string
   id: string
 }
 

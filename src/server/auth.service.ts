@@ -1,88 +1,60 @@
-import { loggerFactory } from '../shared/logger.service'
-import { User, Role, jwtSecret } from './database/mysql.service'
+import { User } from './database/mysql.service'
 import { UserService } from './user.service'
 import { PermissionService } from './permission.service'
 import * as scrypt from 'scrypt'
 import _ from 'lodash'
-import * as jwt from 'jsonwebtoken'
 import { NotFoundError } from '../shared/util'
-import { Service } from 'typedi'
+import { Service, Inject } from 'typedi'
 import * as M from '../shared/messages'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
+import { LOGGER, AUDIT_LOGGER } from './constants'
+import { LoggerInstance } from 'winston'
+import { JWTService } from './jwt.service'
 
 // This api is full of potential sql injection :(
 
 @Service()
 export class AuthService {
 
-  private log = loggerFactory()
-  private auditLog = loggerFactory('auth-api.audit.log')
+  constructor(
+    @InjectRepository(User) private userRepository: Repository<User>,
+    private userService: UserService,
+    private permissionService: PermissionService,
+    private jwtService: JWTService,
+    @Inject(LOGGER) private log: LoggerInstance,
+    @Inject(AUDIT_LOGGER) private auditLog: LoggerInstance
+  ) {}
 
-  constructor(@InjectRepository(User) private userRepository: Repository<User>,
-              private userService: UserService,
-              private permissionService: PermissionService) {}
-
-  async login(creds: M.Credentials): Promise<M.User> {
+  async login(creds: M.Credentials): Promise<string> {
     const user = await this.userRepository.findOne({ email: creds.email })
 
     if (typeof user === 'undefined') {
-        this.auditLog.warn('[EMAIL_NOT_FOUND] Invalid log in attempt: ' + creds.email + '@' + creds.services)
-        throw new Error('EMAIL_NOT_FOUND')
+      this.auditLog.warn('[EMAIL_NOT_FOUND] Invalid log in attempt: ' + creds.email + '@' + creds.services)
+      throw new Error('EMAIL_NOT_FOUND')
     }
 
     const matches = await scrypt.verifyKdf(new Buffer(user.password, 'base64'), creds.password)
 
     if (!matches) {
-        this.auditLog.warn('[INVALID_PASSWORD] Invalid log in attempt: ' + creds.email + '@' + creds.services)
-        throw new Error('INVALID_PASSWORD')
+      this.auditLog.warn('[INVALID_PASSWORD] Invalid log in attempt: ' + creds.email + '@' + creds.services)
+      throw new Error('INVALID_PASSWORD')
     }
+
+    const token = await this.jwtService.issue({ email: creds.email, extId: user.extId })
 
     const updateData = {
       id: user.id,
-      jwt: jwt.sign({
-        user: `${user.id}:${user.email}:${user.password}`,
-        expires: new Date(new Date().getTime() + 60000000),
-      }, jwtSecret),
       lastLogin: new Date().toUTCString(),
     }
 
     await this.userService.update(updateData)
     this.auditLog.info('Successful login: ' + creds.email + '@' + creds.services)
-
-    user.jwt = updateData.jwt
-    user.lastLogin = updateData.lastLogin
-
-    return user
+    return token
   }
 
-  async isValid(token: string): Promise<boolean> {
-    if (token === '' || typeof token === 'undefined') throw new Error('INVALID_TOKEN')
-    const user = await this.userRepository.findOne({ jwt: token }, { loadEagerRelations: false })
-
-    if (!user) {
-        this.auditLog.warn('[INVALID_TOKEN] isValid returned false' + token)
-        return Promise.resolve(false)
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as { user: string, expires: Date } | string
-    if (typeof decoded === 'string') {
-      this.auditLog.warn('[INVALID_TOKEN] isValid returned false' + token)
-      return false
-    }
-
-    if (decoded.user !== `${user.id}:${user.email}:${user.password}`) {
-        this.auditLog.warn('[INVALID_TOKEN]  isValid returned false' + token)
-        return false
-    }
-    if (new Date(decoded.expires) <= new Date()) {
-        this.auditLog.warn('[EXPIRED_TOKEN]  isValid returned false' + token)
-        return false
-    }
-
-    this.auditLog.info('isValid returned true')
-
-    return true
+  async isValid(token: string): Promise<M.JWTPayload | false> {
+    return this.jwtService.isValid(token)
   }
 
   private userHasAccess(user: User, ...reqs: M.AccessRequest[]): M.AccessRequest[] {
@@ -92,11 +64,11 @@ export class AuthService {
   }
 
   async canAccess(accessRequest: M.AccessRequest): Promise<boolean> {
-    const user = await this.userRepository.findOne({ jwt: accessRequest.jwt })
+    const user = await this.userRepository.findOne({ email: accessRequest.email })
 
     if (typeof user === 'undefined') {
-        this.auditLog.warn('[USER_NOT_FOUND]  accessRequest denied: %j', accessRequest)
-        return false
+      this.auditLog.warn('[USER_NOT_FOUND]  accessRequest denied: %j', accessRequest)
+      return false
     }
 
     const accepted = this.userHasAccess(user, accessRequest)
@@ -122,7 +94,7 @@ export class AuthService {
 
     const updateData = {
       id: permission.id,
-      users: [...(permission.users || []), { id: grantRequest.accessorId } as any],
+      users: [...(permission.users || []), this.userRepository.create({ id: grantRequest.accessorId })],
     }
 
     await this.permissionService.update(updateData)
@@ -198,13 +170,13 @@ export class AuthService {
       {
         resource: `user -- ${userId}`,
         level: 1,
-        jwt: adminUser.jwt,
+        email: adminUser.email,
         id: `${adminUser.id}`,
       },
       {
         resource: `user -- all_users`,
         level: 1,
-        jwt: adminUser.jwt,
+        email: adminUser.email,
         id: `${adminUser.id}`,
       },
     ]
@@ -224,19 +196,7 @@ export class AuthService {
       throw new NotFoundError('Invalid User ID')
     }
 
-    const updateData = {
-      id: reqUser.id,
-      jwt: jwt.sign({
-        user: `${reqUser.id}:${reqUser.email}:${reqUser.password}`,
-        expires: new Date(new Date().getTime() + 60000000),
-      }, jwtSecret),
-    }
-
-    await this.userService.update(updateData)
-
     this.auditLog.info('Login As Request Successful: %j', loginAsRequest)
-
-    reqUser.jwt = updateData.jwt
 
     return reqUser
   }

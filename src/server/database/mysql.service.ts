@@ -14,8 +14,6 @@ export interface MySQLEnvironment {
   MYSQL_AUTH_DB?: string
 }
 
-export const jwtSecret = (process.env.JWT_SECRET || 'ilikecatz')
-
 export const mysqlConnection = (env: MySQLEnvironment, log = loggerFactory()) => {
   const port = env.MYSQL_PORT && parseInt(env.MYSQL_PORT.toString(), 10) || 3306
   const options: ConnectionOptions = {

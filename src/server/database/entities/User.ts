@@ -22,9 +22,6 @@ export class User {
     @Column({ default: true })
     isEnabled!: boolean
 
-    @Column({ length: '1024' })
-    jwt!: string
-
     @Column({ length: '1024', default: '' })
     resetToken!: string
 

@@ -210,19 +210,20 @@ export class AuthClient {
    * Login a user
    * @param creds Email and password credentials
    */
-  login(creds: { email: string, password: string, services?: string }): Promise<M.User> {
+  login(creds: { email: string, password: string, services?: string }): Promise<string> {
     return promisify(this.client.login)(creds)
       .then(throwOnUndefined)
+      .then(r => r.token)
   }
 
   /**
    * Check if jwt is valid
    * @param token JWT token
    */
-  isValid(token: string): Promise<boolean> {
+  isValid(token: string): Promise<M.JWTPayload | false> {
     return promisify(this.client.isValid)({ token })
       .then(throwOnUndefined)
-      .then(r => r.response)
+      .then(r => r.valid ? r.token : r.valid)
   }
 
   /**
@@ -231,8 +232,8 @@ export class AuthClient {
    * @param level Level of access (1=Read, 2=Write)
    * @param jwt JWT token
    */
-  canAccess(resource: string, level: 1 | 2, jwt: string): Promise<boolean> {
-    return promisify(this.client.canAccess)({ resource, level, jwt })
+  canAccess(resource: string, level: 1 | 2, email: string): Promise<boolean> {
+    return promisify(this.client.canAccess)({ resource, level, email })
       .then(throwOnUndefined)
       .then(r => r.response)
   }

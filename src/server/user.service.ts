@@ -1,5 +1,5 @@
 import { loggerFactory } from '../shared/logger.service'
-import { User, jwtSecret } from './database/mysql.service'
+import { User } from './database/mysql.service'
 import * as scrypt from 'scrypt'
 import * as jwt from 'jsonwebtoken'
 import _ from 'lodash'
@@ -31,13 +31,6 @@ export class UserService {
     user.email = createData.email
     user.password = (await scrypt.kdf(createData.password, scrypt.paramsSync(0.1))).toString('base64')
     user.services = createData.services
-
-    // FIXME: We are leaking passwords. JWTs are not encrypted
-    // FIXME: Why the heck is this being stored in a database - jwts are supposed to be session/memory only
-    user.jwt = jwt.sign({
-      user: `${user.id}:${user.email}:${user.password}`,
-      expires: new Date(new Date().getTime() + 600000),
-    }, jwtSecret)
 
     user.extId = createData.extId
 
@@ -86,16 +79,7 @@ export class UserService {
         ? { password: await scrypt.kdf(updateData.password, scrypt.paramsSync(0.1)).then(b => b.toString('base64')) }
         : {}
 
-    const newJwt =
-      typeof newPassword.password !== 'undefined'
-        ? { jwt: jwt.sign({
-              user: `${existingUser.id}:${updateData.email || existingUser.email}:${newPassword}`,
-              expires: new Date(new Date().getTime() + 600000),
-            }, jwtSecret),
-          }
-        : {}
-
-    const update = { ...updateData, id: existingUser.id, ...newPassword, ...newJwt }
+    const update = { ...updateData, id: existingUser.id, ...newPassword }
 
     return this.userRepository.save(this.userRepository.create(update)).then(data => {
       this.auditLog.info('User updated. patch: %j, new: %j', update, data)
