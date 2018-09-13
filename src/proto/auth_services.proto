@@ -57,7 +57,7 @@ service AuthService {
 
     rpc RevokePermissionFromRole(GrantRequest) returns (PermissionSet) {}
 
-    rpc LoginAs(LoginAsRequest) returns (User) {}
+    rpc LoginAs(LoginAsRequest) returns (UserJWT) {}
 
 }
 

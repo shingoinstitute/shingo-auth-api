@@ -1,6 +1,6 @@
 {
   "name": "@shingo/shingo-auth-api",
-  "version": "1.1.0-beta.0",
+  "version": "1.1.0-beta.1",
   "description": "Provide auth services for Shingo APIs",
   "main": "index.js",
   "types": "index.d.ts",
@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@grpc/proto-loader": "^0.3.0",
+    "@shingo/proto2ts": "^0.1.1",
     "class-transformer": "^0.1.9",
+    "class-validator": "^0.9.1",
     "grpc": "^1.12.4",
     "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.10",
@@ -30,24 +32,98 @@
     "start": "node ./build/server/app.js",
     "debug": "nodemon --watch ./build --inspect=0.0.0.0:9229 --nolazy ./build/server/app.js",
     "docker-debug": "docker-compose -f docker-compose.debug.yml up",
-    "proto": "mkdir -p build/proto && cp -R src/proto build/",
-    "build": "rm -rf build/* && npm run proto && tsc -p ./tsconfig.json",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "tslint -p . -c tslint.json",
+    "fix": "run-s fix:*",
+    "fix:prettier": "prettier \"src/**/*.ts\" --write",
+    "fix:tslint": "tslint --fix --project .",
+    "test": "run-s build test:*",
+    "test:lint": "tslint --project . && prettier \"src/**/*.ts\" --list-different",
+    "test:unit": "./scripts/test.js",
+    "test:unit:watch": "./scripts/test.js --watch",
+    "test:security": "npm audit",
+    "build": "run-s clean && run-p build:*",
+    "build:proto": "mkdir -p build/proto && cp -R src/proto build/",
+    "build:main": "npm run proto-gen && tsc -p ./tsconfig.json",
+    "clean": "trash build test docs",
+    "proto-gen": "proto2ts src/proto/auth_services.proto > src/shared/auth_services.d.ts",
     "prepack": "npm run build && cp -Rav build/* . | ./scripts/parseEmitted.sh build.emit",
     "postpack": "./scripts/postpack.sh"
   },
   "author": "Abraham White",
   "license": "MIT",
   "devDependencies": {
-    "@shingo/tslint-rules": "^1.0.1",
+    "@shingo/tslint-rules": "^1.1.0",
+    "@types/jest": "^23.3.2",
     "@types/jsonwebtoken": "^7.2.8",
     "@types/lodash": "^4.14.115",
     "@types/node": "^10.5.4",
+    "@types/scrypt": "^6.0.0",
     "@types/winston": "^2.3.9",
+    "jest": "^23.6.0",
     "nodemon": "^1.18.3",
+    "npm-run-all": "^4.1.3",
+    "prettier": "^1.14.2",
+    "trash-cli": "^1.4.0",
+    "ts-jest": "^23.1.4",
     "ts-node": "^7.0.0",
     "tslint": "^5.11.0",
+    "tslint-config-prettier": "^1.15.0",
     "typescript": "^3.0.1"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "jest": {
+    "globals": {
+      "ts-jest": {
+        "tsConfigFile": "tsconfig.spec.json"
+      }
+    },
+    "coverageThreshold": {
+      "global": {
+        "branches": 95,
+        "functions": 95,
+        "lines": 95,
+        "statements": -15
+      }
+    },
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx,mjs,ts,tsx}"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      ".*\\.d\\.ts",
+      "<rootDir>/src/(.*)?/__tests__/(.*)?\\.helper\\.ts",
+      "<rootDir>/src/(.*)?/__tests__/(.*)?__helper__(.*)"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/src/(.*)?/__tests__/(.*)?\\.helper\\.ts",
+      "<rootDir>/src/(.*)?/__tests__/(.*)?__helper__(.*)"
+    ],
+    "testMatch": [
+      "<rootDir>/src/**/__tests__/**/*.{js,jsx,mjs,ts,tsx}",
+      "<rootDir>/src/**/?(*.)(spec|test).{js,jsx,mjs,ts,tsx}"
+    ],
+    "testEnvironment": "node",
+    "testURL": "http://localhost",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "transformIgnorePatterns": [
+      "[/\\\\]node_modules[/\\\\].+\\.(js|jsx|mjs|ts|tsx)$"
+    ],
+    "moduleFileExtensions": [
+      "web.js",
+      "js",
+      "json",
+      "web.jsx",
+      "jsx",
+      "node",
+      "mjs",
+      "ts",
+      "tsx"
+    ]
   }
 }

@@ -1,2 +1,2 @@
-export * from './shared/messages'
 export * from './client'
+export * from './shared/auth_services'

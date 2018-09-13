@@ -1,230 +1,373 @@
 import { loggerFactory } from '../../shared/logger.service'
 import * as grpc from 'grpc'
 import * as path from 'path'
-import { UserService, PermissionService, RoleService, AuthService } from '../index'
-import * as M from '../../shared/messages'
+import {
+  UserService,
+  PermissionService,
+  RoleService,
+  AuthService,
+} from '../index'
 import { Options as ProtoOptions, loadSync } from '@grpc/proto-loader'
 import { Service } from 'typedi'
-import { handleUnary, undefinedToNull } from '../../shared/util'
+import { handleUnary, undefinedToNull, validateInput } from '../../shared/util'
 import { classToPlain } from 'class-transformer'
+import { authservices as M } from '../../shared/auth_services'
+import { pipe } from '../../shared/fp'
+import { User, Permission, Role } from '../database/entities'
+import {
+  QueryRequest,
+  RoleOperation,
+  Credentials,
+  UserJWT,
+  AccessRequest,
+  GrantRequest,
+  LoginAsRequest,
+} from '../../shared/auth_services.interface'
+
+// tslint:disable:variable-name no-shadowed-variable
 
 const log = loggerFactory()
-
-export interface ServiceImplementation {
-  createUser: grpc.handleUnaryCall<M.User, M.User>
-  readUser: grpc.handleUnaryCall<M.QueryRequest, M.UserBatch>
-  readOneUser: grpc.handleUnaryCall<M.QueryRequest, M.User>
-  updateUser: grpc.handleUnaryCall<M.User, M.BooleanResponse>
-  deleteUser: grpc.handleUnaryCall<M.User, M.BooleanResponse>
-  addRoleToUser: grpc.handleUnaryCall<M.RoleOperation, M.BooleanResponse>
-  removeRoleFromUser: grpc.handleUnaryCall<M.RoleOperation, M.BooleanResponse>
-  createPermission: grpc.handleUnaryCall<M.Permission, M.Permission>
-  readPermission: grpc.handleUnaryCall<M.QueryRequest, M.PermissionBatch>
-  readOnePermission: grpc.handleUnaryCall<M.QueryRequest, M.Permission>
-  updatePermission: grpc.handleUnaryCall<M.Permission, M.BooleanResponse>
-  deletePermission: grpc.handleUnaryCall<M.Permission, M.BooleanResponse>
-  createRole: grpc.handleUnaryCall<M.Role, M.Role>
-  readRole: grpc.handleUnaryCall<M.QueryRequest, M.RoleBatch>
-  readOneRole: grpc.handleUnaryCall<M.QueryRequest, M.Role>
-  updateRole: grpc.handleUnaryCall<M.Role, M.BooleanResponse>
-  deleteRole: grpc.handleUnaryCall<M.Role, M.BooleanResponse>
-  login: grpc.handleUnaryCall<M.Credentials, M.UserJWT>
-  isValid: grpc.handleUnaryCall<M.UserJWT, M.IsValidResponse>
-  canAccess: grpc.handleUnaryCall<M.AccessRequest, M.BooleanResponse>
-  grantPermissionToUser: grpc.handleUnaryCall<M.GrantRequest, M.PermissionSet>
-  grantPermissionToRole: grpc.handleUnaryCall<M.GrantRequest, M.PermissionSet>
-  revokePermissionFromUser: grpc.handleUnaryCall<M.GrantRequest, M.PermissionSet>
-  revokePermissionFromRole: grpc.handleUnaryCall<M.GrantRequest, M.PermissionSet>
-  loginAs: grpc.handleUnaryCall<M.LoginAsRequest, M.User>
-}
-
-export interface ServiceClient extends grpc.Client {
-  createUser(req: Partial<M.User>, cb: grpc.requestCallback<M.User>): void
-  readUser(req: Partial<M.QueryRequest>, cb: grpc.requestCallback<M.UserBatch>): void
-  readOneUser(req: Partial<M.QueryRequest>, cb: grpc.requestCallback<M.User>): void
-  updateUser(req: Partial<M.User>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  deleteUser(req: Partial<M.User>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  addRoleToUser(req: Partial<M.RoleOperation>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  removeRoleFromUser(req: Partial<M.RoleOperation>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  createPermission(req: Partial<M.Permission>, cb: grpc.requestCallback<M.Permission>): void
-  readPermission(req: Partial<M.QueryRequest>, cb: grpc.requestCallback<M.PermissionBatch>): void
-  readOnePermission(req: Partial<M.QueryRequest>, cb: grpc.requestCallback<M.Permission>): void
-  updatePermission(req: Partial<M.Permission>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  deletePermission(req: Partial<M.Permission>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  createRole(req: Partial<M.Role>, cb: grpc.requestCallback<M.Role>): void
-  readRole(req: Partial<M.QueryRequest>, cb: grpc.requestCallback<M.RoleBatch>): void
-  readOneRole(req: Partial<M.QueryRequest>, cb: grpc.requestCallback<M.Role>): void
-  updateRole(req: Partial<M.Role>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  deleteRole(req: Partial<M.Role>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  login(req: Partial<M.Credentials>, cb: grpc.requestCallback<M.UserJWT>): void
-  isValid(req: Partial<M.UserJWT>, cb: grpc.requestCallback<M.IsValidResponse>): void
-  canAccess(req: Partial<M.AccessRequest>, cb: grpc.requestCallback<M.BooleanResponse>): void
-  grantPermissionToUser(req: Partial<M.GrantRequest>, cb: grpc.requestCallback<M.PermissionSet>): void
-  grantPermissionToRole(req: Partial<M.GrantRequest>, cb: grpc.requestCallback<M.PermissionSet>): void
-  revokePermissionFromUser(req: Partial<M.GrantRequest>, cb: grpc.requestCallback<M.PermissionSet>): void
-  revokePermissionFromRole(req: Partial<M.GrantRequest>, cb: grpc.requestCallback<M.PermissionSet>): void
-  loginAs(req: Partial<M.LoginAsRequest>, cb: grpc.requestCallback<M.User>): void
-}
 
 const makeUnaryCall = handleUnary(log)
 
 @Service()
-export class AuthMicroservice implements ServiceImplementation {
+export class AuthMicroservice implements M.AuthServiceImplementation {
+  service: grpc.ServiceDefinition<M.AuthServiceImplementation>
 
-    service: grpc.ServiceDefinition<ServiceImplementation>
-
-    constructor(private userService: UserService,
-                private permissionService: PermissionService,
-                private roleService: RoleService,
-                private authService: AuthService) {
-      const protoFile = path.join(__dirname, '../../proto', 'auth_services.proto')
-      const options: ProtoOptions = {
-        keepCase: true,
-        longs: String,
-        enums: String,
-      }
-      const packageDefinition = loadSync(protoFile, options)
-      const protoDescriptor = grpc.loadPackageDefinition(packageDefinition).authservices as grpc.GrpcObject
-      this.service = (protoDescriptor.AuthService as any).service
+  constructor(
+    private userService: UserService,
+    private permissionService: PermissionService,
+    private roleService: RoleService,
+    private authService: AuthService,
+  ) {
+    const protoFile = path.join(__dirname, '../../proto', 'auth_services.proto')
+    const options: ProtoOptions = {
+      keepCase: true,
+      longs: String,
+      enums: String,
     }
+    const packageDefinition = loadSync(protoFile, options)
+    const protoDescriptor = grpc.loadPackageDefinition(packageDefinition)
+      .authservices as grpc.GrpcObject
+    this.service = (protoDescriptor.AuthService as any).service
+  }
 
-    /****************
-     * UserServices *
-     ***************/
+  /****************
+   * UserServices *
+   ***************/
 
-    // Create a new user
-    createUser = makeUnaryCall('createUser', (req: M.User) => this.userService.create(req) as Promise<M.User>)
+  // Create a new user
+  CreateUser = makeUnaryCall(
+    'createUser',
+    pipe(
+      validateInput(User, { groups: ['create'] }),
+      req => req.then(u => this.userService.create(u)),
+    ),
+  )
 
-    // Get a list of users based on a TypeORM query
-    readUser = makeUnaryCall('readUser', (req: M.QueryRequest) =>
-      this.userService.read(req.clause).then(users => ({ users: classToPlain(users) as M.User[] }))
-    )
+  // Get a list of users based on a TypeORM query
+  ReadUser = makeUnaryCall(
+    'readUser',
+    pipe(
+      validateInput(QueryRequest),
+      req =>
+        req.then(({ clause }) =>
+          this.userService
+            .read(clause)
+            .then(users => ({ users: classToPlain(users) as User[] })),
+        ),
+    ),
+  )
 
-    // Get a single user based on a TypeORM query
-    readOneUser = makeUnaryCall('readOneUser', (req: M.QueryRequest) =>
-      this.userService.readOne(req.clause).then(c => c && (classToPlain(c) as M.User)).then(undefinedToNull)
-    )
+  // Get a single user based on a TypeORM query
+  ReadOneUser = makeUnaryCall(
+    'readOneUser',
+    pipe(
+      validateInput(QueryRequest),
+      req =>
+        req.then(({ clause }) =>
+          this.userService
+            .readOne(clause)
+            .then(c => c && (classToPlain(c) as M.User))
+            .then(undefinedToNull),
+        ),
+    ),
+  )
 
-    // Update a user (requires user.id)
-    updateUser = makeUnaryCall('updateUser', (req: M.User) =>
-      this.userService.update(req).then(response => ({ response }))
-    )
+  // Update a user (requires user.id)
+  UpdateUser = makeUnaryCall(
+    'updateUser',
+    pipe(
+      validateInput(User, { groups: ['update'] }),
+      req =>
+        req.then(u =>
+          this.userService.update(u).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    // Delete a user (requires user.id)
-    deleteUser = makeUnaryCall('deleteUser', (req: M.User) =>
-      this.userService.delete(req).then(response => ({ response }))
-    )
+  // Delete a user (requires user.id)
+  DeleteUser = makeUnaryCall(
+    'deleteUser',
+    pipe(
+      validateInput(User, { groups: ['update'] }),
+      req =>
+        req.then(u =>
+          this.userService.delete(u).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    // Add a role to a user (requires userId and roleId)
-    addRoleToUser = makeUnaryCall('addRoleToUser', (req: M.RoleOperation) =>
-      this.userService.addRole(req).then(response => ({ response }))
-    )
+  // Add a role to a user (requires userId and roleId)
+  AddRoleToUser = makeUnaryCall(
+    'addRoleToUser',
+    pipe(
+      validateInput(RoleOperation),
+      req =>
+        req.then(op =>
+          this.userService.addRole(op).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    // Remove a role from a user (requires userId and roleId)
-    removeRoleFromUser = makeUnaryCall('removeRoleFromUser', (req: M.RoleOperation) =>
-      this.userService.removeRole(req).then(response => ({ response }))
-    )
+  // Remove a role from a user (requires userId and roleId)
+  RemoveRoleFromUser = makeUnaryCall(
+    'removeRoleFromUser',
+    pipe(
+      validateInput(RoleOperation),
+      req =>
+        req.then(op =>
+          this.userService.removeRole(op).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    /**********************
-     * PermissionServices *
-     *********************/
+  /**********************
+   * PermissionServices *
+   *********************/
 
-    // Create a new permission
-    createPermission = makeUnaryCall('createPermission', (req: M.Permission) =>
-      this.permissionService.create(req).then(v => classToPlain(v) as M.Permission)
-    )
+  // Create a new permission
+  CreatePermission = makeUnaryCall(
+    'createPermission',
+    pipe(
+      validateInput(Permission, { groups: ['create'] }),
+      req =>
+        req.then(perm =>
+          this.permissionService
+            .create(perm)
+            .then(v => classToPlain(v) as M.Permission),
+        ),
+    ),
+  )
 
-    // Get a list of permissions based on a TypeORM query
-    readPermission = makeUnaryCall('readPermission', (req: M.QueryRequest) =>
-        this.permissionService.read(req.clause).then(p => ({ permissions: classToPlain(p) as M.Permission[] }))
-    )
+  // Get a list of permissions based on a TypeORM query
+  ReadPermission = makeUnaryCall(
+    'readPermission',
+    pipe(
+      validateInput(QueryRequest),
+      req =>
+        req.then(({ clause }) =>
+          this.permissionService
+            .read(clause)
+            .then(p => ({ permissions: classToPlain(p) as M.Permission[] })),
+        ),
+    ),
+  )
 
-    // Get a single permission based on a TypeORM query
-    readOnePermission = makeUnaryCall('readOnePermission', (req: M.QueryRequest) =>
-      this.permissionService.readOne(req.clause).then(p => p && (classToPlain(p) as M.Permission)).then(undefinedToNull)
-    )
+  // Get a single permission based on a TypeORM query
+  ReadOnePermission = makeUnaryCall(
+    'readOnePermission',
+    pipe(
+      validateInput(QueryRequest),
+      req =>
+        req.then(({ clause }) =>
+          this.permissionService
+            .readOne(clause)
+            .then(p => p && (classToPlain(p) as M.Permission))
+            .then(undefinedToNull),
+        ),
+    ),
+  )
 
-    // Update a permission (requires permission.id)
-    updatePermission = makeUnaryCall('updatePermission', (req: M.Permission) =>
-      this.permissionService.update(req).then(response => ({ response }))
-    )
+  // Update a permission (requires permission.id)
+  UpdatePermission = makeUnaryCall(
+    'updatePermission',
+    pipe(
+      validateInput(Permission, { groups: ['update'] }),
+      req =>
+        req.then(p =>
+          this.permissionService.update(p).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    // Delete a permission (requires permission.id)
-    deletePermission = makeUnaryCall('deletePermission', (req: M.Permission) =>
-      this.permissionService.delete(req).then(response => ({ response }))
-    )
+  // Delete a permission (requires permission.id)
+  DeletePermission = makeUnaryCall(
+    'deletePermission',
+    pipe(
+      validateInput(Permission, { groups: ['delete'] }),
+      req =>
+        req.then(p =>
+          this.permissionService.delete(p).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    /****************
-     * RoleServices *
-     ***************/
-    // Create a new Role
-    createRole = makeUnaryCall('createRole', (req: M.Role) =>
-      this.roleService.create(req)
-    )
+  /****************
+   * RoleServices *
+   ***************/
+  // Create a new Role
+  CreateRole = makeUnaryCall(
+    'createRole',
+    pipe(
+      validateInput(Role, { groups: ['create'] }),
+      req => req.then(role => this.roleService.create(role)),
+    ),
+  )
 
-    // Get a list of roles based on a TypeORM query
-    readRole = makeUnaryCall('readRole', (req: M.QueryRequest) =>
-      this.roleService.read(req.clause).then(rs => ({ roles: classToPlain(rs) as M.Role[] }))
-    )
+  // Get a list of roles based on a TypeORM query
+  ReadRole = makeUnaryCall(
+    'readRole',
+    pipe(
+      validateInput(QueryRequest),
+      req =>
+        req.then(({ clause }) =>
+          this.roleService
+            .read(clause)
+            .then(rs => ({ roles: classToPlain(rs) as M.Role[] })),
+        ),
+    ),
+  )
 
-    // Get a single role based on a TypeORM query
-    readOneRole = makeUnaryCall('readOneRole', (req: M.QueryRequest) =>
-      this.roleService.readOne(req.clause).then(r => r && (classToPlain(r) as M.Role)).then(undefinedToNull)
-    )
+  // Get a single role based on a TypeORM query
+  ReadOneRole = makeUnaryCall(
+    'readOneRole',
+    pipe(
+      validateInput(QueryRequest),
+      req =>
+        req.then(({ clause }) =>
+          this.roleService
+            .readOne(clause)
+            .then(r => r && (classToPlain(r) as M.Role))
+            .then(undefinedToNull),
+        ),
+    ),
+  )
 
-    // Update a role (requires role.id)
-    updateRole = makeUnaryCall('updateRole', (req: M.Role) =>
-      this.roleService.update(req).then(response => ({ response }))
-    )
+  // Update a role (requires role.id)
+  UpdateRole = makeUnaryCall(
+    'updateRole',
+    pipe(
+      validateInput(Role, { groups: ['update'] }),
+      req =>
+        req.then(r =>
+          this.roleService.update(r).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    // Delete a role (requires role.id)
-    deleteRole = makeUnaryCall('deleteRole', (req: M.Role) =>
-      this.roleService.delete(req).then(response => ({ response }))
-    )
+  // Delete a role (requires role.id)
+  DeleteRole = makeUnaryCall(
+    'deleteRole',
+    pipe(
+      validateInput(Role, { groups: ['update'] }),
+      req =>
+        req.then(r =>
+          this.roleService.delete(r).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    /****************
-     * AuthServices *
-     ***************/
-    // Login a user based on email and password
-    login = makeUnaryCall('login', (req: M.Credentials) =>
-      this.authService.login(req).then(token => ({ token }))
-    )
+  /****************
+   * AuthServices *
+   ***************/
+  // Login a user based on email and password
+  Login = makeUnaryCall(
+    'login',
+    pipe(
+      validateInput(Credentials),
+      req =>
+        req.then(creds =>
+          this.authService.login(creds).then(token => ({ token })),
+        ),
+    ),
+  )
 
-    // Checks if JSON Web Token is valid
-    isValid = makeUnaryCall('isValid', (req: M.UserJWT) =>
-      this.authService.isValid(req.token).then(token =>
-        !token
-          ? { valid: false as false }
-          : { valid: true as true, token }
-        )
-    )
+  // Checks if JSON Web Token is valid
+  IsValid = makeUnaryCall(
+    'isValid',
+    pipe(
+      validateInput(UserJWT),
+      req =>
+        req.then(({ token }) =>
+          this.authService
+            .isValid(token)
+            .then(
+              token =>
+                !token
+                  ? { valid: false as false }
+                  : { valid: true as true, token },
+            ),
+        ),
+    ),
+  )
 
-    // Checks if user (via JWT) has permissions for resource at requested level
-    canAccess = makeUnaryCall('canAccess', (req: M.AccessRequest) =>
-      this.authService.canAccess(req).then(response => ({ response }))
-    )
+  // Checks if user (via JWT) has permissions for resource at requested level
+  CanAccess = makeUnaryCall(
+    'canAccess',
+    pipe(
+      validateInput(AccessRequest),
+      req =>
+        req.then(access =>
+          this.authService.canAccess(access).then(response => ({ response })),
+        ),
+    ),
+  )
 
-    // Grants permission to a user
-    grantPermissionToUser = makeUnaryCall('grantPermissionToUser', (req: M.GrantRequest) =>
-      this.authService.grantToUser(req)
-    )
+  // Grants permission to a user
+  GrantPermissionToUser = makeUnaryCall(
+    'grantPermissionToUser',
+    pipe(
+      validateInput(GrantRequest),
+      req => req.then(grant => this.authService.grantToUser(grant)),
+    ),
+  )
 
-    // Grants permission to a role
-    grantPermissionToRole = makeUnaryCall('grantPermissionToRole', (req: M.GrantRequest) =>
-      this.authService.grantToRole(req)
-    )
+  // Grants permission to a role
+  GrantPermissionToRole = makeUnaryCall(
+    'grantPermissionToRole',
+    pipe(
+      validateInput(GrantRequest),
+      req => req.then(req => this.authService.grantToRole(req)),
+    ),
+  )
 
-    // Revokes permission from a user
-    revokePermissionFromUser = makeUnaryCall('revokePermissionFromUser', (req: M.GrantRequest) =>
-      this.authService.revokeFromUser(req)
-    )
+  // Revokes permission from a user
+  RevokePermissionFromUser = makeUnaryCall(
+    'revokePermissionFromUser',
+    pipe(
+      validateInput(GrantRequest),
+      req => req.then(req => this.authService.revokeFromUser(req)),
+    ),
+  )
 
-    // Revokes permission from a role
-    revokePermissionFromRole = makeUnaryCall('revokePermissionFromRole', (req: M.GrantRequest) =>
-      this.authService.revokeFromRole(req)
-    )
+  // Revokes permission from a role
+  RevokePermissionFromRole = makeUnaryCall(
+    'revokePermissionFromRole',
+    pipe(
+      validateInput(GrantRequest),
+      req => req.then(req => this.authService.revokeFromRole(req)),
+    ),
+  )
 
-    loginAs = makeUnaryCall('loginAs', (req: M.LoginAsRequest) =>
-      this.authService.loginAs(req).then(u => classToPlain(u) as M.User)
-    )
+  LoginAs = makeUnaryCall(
+    'loginAs',
+    pipe(
+      validateInput(LoginAsRequest),
+      req =>
+        req.then(req =>
+          this.authService.loginAs(req).then(token => ({ token })),
+        ),
+    ),
+  )
 }
