@@ -41,7 +41,7 @@
     "test:unit:watch": "./scripts/test.js --watch",
     "test:security": "npm audit",
     "build": "run-s clean && run-p build:*",
-    "build:proto": "mkdir -p build/proto && cp -R src/proto build/",
+    "build:proto": "mkdir -p build/proto && cp -R src/proto build/ && mkdir -p build/shared && cp src/shared/auth_services.d.ts build/shared",
     "build:main": "npm run proto-gen && tsc -p ./tsconfig.json",
     "clean": "trash build test docs",
     "proto-gen": "proto2ts src/proto/auth_services.proto > src/shared/auth_services.d.ts",
