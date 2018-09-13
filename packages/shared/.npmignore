@@ -1,0 +1,10 @@
+**/__mocks__
+**/__tests__
+*.map
+tsconfig.*
+**/*.spec.*
+docs
+coverage
+src
+test
+*.tgz

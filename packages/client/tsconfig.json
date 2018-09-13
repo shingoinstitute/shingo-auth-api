@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "build"
+  },
+  "include": [
+    "./src/**/*.ts"
+  ],
+  "exclude": [
+    "./src/**/*.mock.ts",
+    "./src/**/*.spec.ts"
+  ],
+  "references": [
+    { "path": "../shared", "prefix": true },
+  ]
+}

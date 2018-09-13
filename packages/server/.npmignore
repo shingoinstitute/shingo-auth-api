@@ -1,0 +1,12 @@
+**/__mocks__
+**/__tests__
+*.map
+tsconfig.*
+**/*.spec.*
+docs
+coverage
+build
+src
+test
+seed-database.ts
+*.tgz
