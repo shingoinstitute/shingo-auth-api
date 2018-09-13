@@ -1,6 +1,6 @@
 {
   "name": "@shingo/shingo-auth-api",
-  "version": "1.1.0-beta.1",
+  "version": "1.1.0-beta.2",
   "description": "Provide auth services for Shingo APIs",
   "main": "index.js",
   "types": "index.d.ts",
