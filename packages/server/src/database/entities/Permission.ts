@@ -1,8 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm'
 import { Role } from './Role'
 import { User } from './User'
-import { Permission as P } from '../../../../shared/src/Permission'
-import { Level } from '../../../../shared/src/auth_services.interface'
+import { Permission as P, Level } from '@shingo/auth-api-shared'
 
 @Entity()
 export class Permission extends P {

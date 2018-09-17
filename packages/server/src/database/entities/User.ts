@@ -7,7 +7,7 @@ import {
 } from 'typeorm'
 import { Role } from './Role'
 import { Permission } from './Permission'
-import { User as U } from '../../../../shared/src/User'
+import { User as U } from '@shingo/auth-api-shared'
 
 @Entity()
 export class User extends U {
