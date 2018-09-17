@@ -4,6 +4,13 @@
   "description": "Shared library for shingo auth service",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shingoinstitute/shingo-auth-api.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "run-s clean && run-p build:*",
     "build:proto": "proto2ts ../../proto/auth_services.proto > src/auth_services.proto.ts",

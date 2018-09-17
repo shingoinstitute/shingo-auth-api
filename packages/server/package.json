@@ -8,6 +8,9 @@
     "type": "git",
     "url": "git+https://github.com/shingoinstitute/shingo-auth-api.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "auth-api-server": "./app.js"
   },

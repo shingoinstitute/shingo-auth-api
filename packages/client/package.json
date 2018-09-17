@@ -8,6 +8,9 @@
     "type": "git",
     "url": "git+https://github.com/shingoinstitute/shingo-auth-api.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@grpc/proto-loader": "^0.3.0",
     "@shingo/auth-api-shared": "1.0.0-beta.0",
