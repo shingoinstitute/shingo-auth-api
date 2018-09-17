@@ -28,8 +28,8 @@
     "winston": "^2.4.0"
   },
   "scripts": {
-    "start": "node ./build/server/app.js",
-    "debug": "nodemon --watch ./build --inspect=0.0.0.0:9229 --nolazy ./build/server/app.js",
+    "start": "node ./build/app.js",
+    "debug": "nodemon --watch ./build --inspect=0.0.0.0:9229 --nolazy ./build/app.js",
     "docker-debug": "docker-compose -f docker-compose.debug.yml up",
     "build": "run-s clean && run-p build:*",
     "build:proto": "mkdir -p build/proto && cp -R ../../proto build/",
