@@ -1,11 +1,10 @@
 import { Permission } from './database/mysql.service'
 import _ from 'lodash'
 import { loggerFactory } from './logger.service'
-import { RequireKeys } from './util'
 import { Repository } from 'typeorm'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Service } from 'typedi'
-import { PermissionCreateData } from '@shingo/auth-api-shared'
+import { PermissionCreateData, RequireKeys } from '@shingo/auth-api-shared'
 
 @Service()
 export class PermissionService {

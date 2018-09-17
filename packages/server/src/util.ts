@@ -1,79 +1,34 @@
 import { LoggerInstance } from 'winston'
 import { handleUnaryCall, ServiceError, Metadata, status as Status } from 'grpc'
-import { plainToClass } from 'class-transformer'
-import { validate, ValidationError } from 'class-validator'
 
 // tslint:disable:max-classes-per-file
-// tslint:disable-next-line:interface-over-type-literal
-export type ClassType<T> = {
-  new (...args: any[]): T
-}
 
-export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
 export class NotFoundError extends Error {
   name = 'NOT_FOUND'
-}
-
-export type Overwrite<A extends object, B extends object> = Pick<
-  A,
-  Exclude<keyof A, keyof B>
-> &
-  B
-
-export type RequireKeys<T extends object, K extends keyof T> = Overwrite<
-  T,
-  { [key in K]-?: T[key] }
->
-
-export const toClass = <T>(cls: ClassType<T>) => (plain: object) =>
-  plainToClass(cls, plain)
-
-export const validateInput = <T>(
-  cls: ClassType<T>,
-  options: { partial?: boolean; groups?: string[] } = {},
-) => <U extends object>(plain: U) => {
-  const instance = plain instanceof cls ? plain : plainToClass(cls, plain)
-  return validate(instance, {
-    validationError: { target: process.env.NODE_ENV !== 'production' },
-    skipMissingProperties: !!options.partial,
-    groups: options.groups || [],
-  }).then(errs => {
-    if (errs.length === 0) return instance
-    throw new ValidationException(errs)
-  })
-}
-
-export class ValidationException implements ServiceError {
-  code = Status.INVALID_ARGUMENT
-  metadata?: Metadata | undefined
-  name = 'Validation_Error'
-  message = 'Error, Invalid input'
-  stack?: string | undefined
-
-  constructor(errors: ValidationError[], message?: string) {
-    this.message = message || this.message
-    this.metadata = new Metadata()
-    this.metadata.add('validation-errors', Buffer.from(JSON.stringify(errors)))
-  }
 }
 
 export class SError extends Error implements ServiceError {
   code?: Status
   metadata?: Metadata
 
-  constructor(error: Error, status?: Status) {
+  constructor(error: Error | object, status?: Status) {
     super()
-    this.message = error.message
-    this.name = error.name || 'Error'
+    this.message = (error as Error).message
+    this.name = (error as Error).name || 'Error'
     this.metadata = new Metadata()
-    this.metadata.add(
-      'error-bin',
-      Buffer.from(
-        error instanceof Error
-          ? JSON.stringify(error, Object.getOwnPropertyNames(error))
-          : JSON.stringify(error),
-      ),
-    )
+    const stringErr = JSON.stringify(error, (_, value) => {
+      if (value instanceof Error) {
+        const err: any = {}
+        Object.getOwnPropertyNames(error).forEach(k => {
+          err[k] = (value as any)[k]
+        })
+
+        return err
+      }
+
+      return value
+    })
+    this.metadata.add('error-bin', Buffer.from(stringErr))
     this.code = status || Status.INTERNAL
   }
 }

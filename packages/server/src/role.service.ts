@@ -3,7 +3,7 @@ import { Role } from './database/mysql.service'
 import { Repository } from 'typeorm'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Service } from 'typedi'
-import { RequireKeys } from './util'
+import { RequireKeys } from '@shingo/auth-api-shared'
 
 @Service()
 export class RoleService {

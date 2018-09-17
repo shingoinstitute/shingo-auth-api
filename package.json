@@ -4,7 +4,7 @@
     "fix:prettier": "prettier \"packages/**/*.ts\" --write",
     "fix:tslint": "tslint --fix --project .",
     "test": "run-s build test:*",
-    "test:lint": "tslint --project . && prettier \"packages/**/*.ts\" --list-different",
+    "test:lint": "tslint --project packages && prettier \"packages/**/*.ts\" --list-different",
     "test:unit": "./scripts/test.js",
     "test:unit:watch": "./scripts/test.js --watch",
     "test:security": "npm audit",

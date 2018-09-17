@@ -9,7 +9,7 @@ import {
 } from '../index'
 import { Options as ProtoOptions, loadSync } from '@grpc/proto-loader'
 import { Service } from 'typedi'
-import { handleUnary, undefinedToNull, validateInput } from '../util'
+import { handleUnary, undefinedToNull } from '../util'
 import { classToPlain } from 'class-transformer'
 import { pipe } from '../fp'
 import { User, Permission, Role } from '../database/entities'
@@ -22,6 +22,7 @@ import {
   GrantRequest,
   LoginAsRequest,
   authservices as M,
+  validateInput,
 } from '@shingo/auth-api-shared'
 
 // tslint:disable:variable-name no-shadowed-variable

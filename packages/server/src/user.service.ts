@@ -2,11 +2,15 @@ import { loggerFactory } from './logger.service'
 import { User } from './database/mysql.service'
 import * as scrypt from 'scrypt'
 import _ from 'lodash'
-import { NotFoundError, RequireKeys } from './util'
+import { NotFoundError } from './util'
 import { Service } from 'typedi'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
-import { RoleOperation, UserCreateData } from '@shingo/auth-api-shared'
+import {
+  RoleOperation,
+  UserCreateData,
+  RequireKeys,
+} from '@shingo/auth-api-shared'
 
 @Service()
 export class UserService {

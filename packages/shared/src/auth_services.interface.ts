@@ -16,6 +16,9 @@ import { Type } from 'class-transformer'
 
 // tslint:disable:max-classes-per-file
 
+// We have undefined checks in all of the constructors because class-transformer does not use the constructor
+// but we want any human consumer to provide a construction object
+
 export interface PermissionCreateData {
   resource: string
   level: Level
@@ -42,141 +45,163 @@ export const enum Level {
 export class QueryRequest implements Required<M.QueryRequest> {
   @IsString()
   @IsNotEmpty()
-  clause: string
+  clause!: string
 
   constructor(clause: string | Required<M.QueryRequest>) {
-    this.clause = typeof clause === 'string' ? clause : clause.clause
+    if (typeof clause !== 'undefined') {
+      this.clause = typeof clause === 'string' ? clause : clause.clause
+    }
   }
 }
 
 export class UserJWT implements Required<M.UserJWT> {
   @IsBase64()
   @IsNotEmpty()
-  token: string
+  token!: string
 
   constructor(token: string | Required<M.UserJWT>) {
-    this.token = typeof token === 'string' ? token : token.token
+    if (typeof token !== 'undefined') {
+      this.token = typeof token === 'string' ? token : token.token
+    }
   }
 }
 
 export class BooleanResponse implements Required<M.BooleanResponse> {
   @IsBoolean()
-  response: boolean
+  response!: boolean
 
   constructor(response: boolean | Required<M.BooleanResponse>) {
-    this.response = typeof response === 'boolean' ? response : response.response
+    if (typeof response !== 'undefined') {
+      this.response =
+        typeof response === 'boolean' ? response : response.response
+    }
   }
 }
 
 export class Credentials
   implements RequireKeys<M.Credentials, 'email' | 'password'> {
   @IsEmail()
-  email: string
+  email!: string
 
   @IsString()
-  password: string
+  password!: string
 
   @IsOptional()
   @IsString()
   services?: string
 
   constructor(creds: RequireKeys<M.Credentials, 'email' | 'password'>) {
-    this.email = creds.email
-    this.password = creds.password
-    this.services = creds.services
+    if (typeof creds !== 'undefined') {
+      this.email = creds.email
+      this.password = creds.password
+      this.services = creds.services
+    }
   }
 }
 
 export class AccessRequest implements Required<M.AccessRequest> {
   @IsString()
-  resource: string
+  resource!: string
 
   @IsNumber()
   @IsIn([1, 2])
-  level: 1 | 2
+  level!: 1 | 2
 
   @IsEmail()
-  email: string
+  email!: string
 
   @IsString()
-  id: string
+  id!: string
 
   constructor(request: Required<M.AccessRequest>) {
-    this.resource = request.resource
-    this.level = request.level as 1 | 2
-    this.email = request.email
-    this.id = request.id
-  }
-}
-
-export class IsValidResponse implements Required<M.IsValidResponse> {
-  @IsBoolean()
-  valid: boolean
-
-  @ValidateNested()
-  token: JWTPayload
-
-  constructor(response: Required<M.IsValidResponse>) {
-    this.valid = response.valid
-    this.token = response.token as JWTPayload
+    if (typeof request !== 'undefined') {
+      this.resource = request.resource
+      this.level = request.level as 1 | 2
+      this.email = request.email
+      this.id = request.id
+    }
   }
 }
 
 export class JWTPayload implements RequireKeys<M.JWTPayload, 'email'> {
   @IsEmail()
-  email: string
+  email!: string
 
   @IsString()
   @IsOptional()
   extId?: string
 
   constructor(payload: Required<M.JWTPayload>) {
-    this.email = payload.email
-    this.extId = payload.extId
+    if (typeof payload !== 'undefined') {
+      this.email = payload.email
+      this.extId = payload.extId
+    }
+  }
+}
+
+export class IsValidResponse implements Required<M.IsValidResponse> {
+  @IsBoolean()
+  valid!: boolean
+
+  @ValidateNested()
+  @Type(() => JWTPayload)
+  token!: JWTPayload
+
+  constructor(response: Required<M.IsValidResponse>) {
+    if (typeof response !== 'undefined') {
+      this.valid = response.valid
+      this.token = response.token as JWTPayload
+    }
   }
 }
 
 export class GrantRequest implements Required<M.GrantRequest> {
   @IsString()
   @IsNotEmpty()
-  resource: string
+  resource!: string
 
   @IsNumber()
-  level: number
+  level!: number
 
   @IsNumber()
-  accessorId: number
+  accessorId!: number
 
   constructor(request: Required<M.GrantRequest>) {
-    this.resource = request.resource
-    this.level = request.level
-    this.accessorId = request.accessorId
+    if (typeof request !== 'undefined') {
+      this.resource = request.resource
+      this.level = request.level
+      this.accessorId = request.accessorId
+    }
   }
 }
 
 export class PermissionSet implements Required<M.PermissionSet> {
   @IsNumber()
-  permissionId: number
+  permissionId!: number
 
   @IsNumber()
-  accessorId: number
+  accessorId!: number
 
   constructor(set: Required<M.PermissionSet>) {
-    this.permissionId = set.permissionId
-    this.accessorId = set.accessorId
+    if (typeof set !== 'undefined') {
+      this.permissionId = set.permissionId
+      this.accessorId = set.accessorId
+    }
   }
 }
 
 export class RoleOperation implements Required<M.RoleOperation> {
   @IsEmail()
-  userEmail: string
+  userEmail!: string
 
   @IsNumber()
-  roleId: number
+  roleId!: number
 
   constructor(op: Required<M.RoleOperation>) {
-    this.userEmail = op.userEmail
-    this.roleId = op.roleId
+    if (typeof op !== 'undefined') {
+      this.userEmail = op.userEmail
+      this.roleId = op.roleId
+    }
   }
 }
 

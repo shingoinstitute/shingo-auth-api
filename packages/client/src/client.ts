@@ -1,7 +1,7 @@
 import * as path from 'path'
 import { Options as ProtoOptions, loadSync } from '@grpc/proto-loader'
 import * as grpc from 'grpc'
-import { bindAll, promisifyAll } from './util'
+import { bindAll, promisifyAll, parseError } from './util'
 import {
   UserCreateData,
   PermissionCreateData,
@@ -49,6 +49,7 @@ export class AuthClient {
   getUsers(clause?: string) {
     return this.client
       .ReadUser({ clause: clause || '' })
+      .catch(parseError)
       .then(b => b && b.users)
       .then(throwOnUndefined)
   }
@@ -62,6 +63,7 @@ export class AuthClient {
       .ReadOneUser({
         clause: clause || '',
       })
+      .catch(parseError)
       .then(throwOnUndefined)
   }
 
@@ -70,7 +72,10 @@ export class AuthClient {
    * @param user Data to create the user with
    */
   createUser(user: UserCreateData) {
-    return this.client.CreateUser(user).then(throwOnUndefined)
+    return this.client
+      .CreateUser(user)
+      .catch(parseError)
+      .then(throwOnUndefined)
   }
 
   /**
@@ -84,6 +89,7 @@ export class AuthClient {
   ) {
     return this.client
       .UpdateUser(user)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -99,6 +105,7 @@ export class AuthClient {
   ) {
     return this.client
       .DeleteUser(user)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -110,6 +117,7 @@ export class AuthClient {
   addRoleToUser(set: M.RoleOperation) {
     return this.client
       .AddRoleToUser(set)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -121,6 +129,7 @@ export class AuthClient {
   removeRoleFromUser(set: M.RoleOperation) {
     return this.client
       .RemoveRoleFromUser(set)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -132,6 +141,7 @@ export class AuthClient {
   getPermissions(clause?: string) {
     return this.client
       .ReadPermission({ clause: clause || '' })
+      .catch(parseError)
       .then(r => r && r.permissions)
       .then(throwOnUndefined)
   }
@@ -145,6 +155,7 @@ export class AuthClient {
       .ReadOnePermission({
         clause: clause || '',
       })
+      .catch(parseError)
       .then(throwOnUndefined)
   }
 
@@ -153,7 +164,10 @@ export class AuthClient {
    * @param permission Data to create the permission with
    */
   createPermission(permission: PermissionCreateData) {
-    return this.client.CreatePermission(permission).then(throwOnUndefined)
+    return this.client
+      .CreatePermission(permission)
+      .catch(parseError)
+      .then(throwOnUndefined)
   }
 
   /**
@@ -163,6 +177,7 @@ export class AuthClient {
   updatePermission(permission: RequireKeys<Partial<M.Permission>, 'id'>) {
     return this.client
       .UpdatePermission(permission)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -188,6 +203,7 @@ export class AuthClient {
       typeof arg1 === 'string' ? { resource: arg1, level: arg2 } : arg1
     return this.client
       .DeletePermission(obj)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -199,6 +215,7 @@ export class AuthClient {
   getRoles(clause?: string) {
     return this.client
       .ReadRole({ clause: clause || '' })
+      .catch(parseError)
       .then(r => r && r.roles)
       .then(throwOnUndefined)
   }
@@ -212,6 +229,7 @@ export class AuthClient {
       .ReadOneRole({
         clause: clause || '',
       })
+      .catch(parseError)
       .then(throwOnUndefined)
   }
 
@@ -230,6 +248,7 @@ export class AuthClient {
   updateRole(role: RequireKeys<Partial<M.Role>, 'id'>) {
     return this.client
       .UpdateRole(role)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -241,6 +260,7 @@ export class AuthClient {
   deleteRole(role: RequireKeys<Partial<M.Role>, 'id'>) {
     return this.client
       .DeleteRole(role)
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -252,6 +272,7 @@ export class AuthClient {
   login(creds: { email: string; password: string; services?: string }) {
     return this.client
       .Login(creds)
+      .catch(parseError)
       .then(r => r && r.token)
       .then(throwOnUndefined)
   }
@@ -263,6 +284,7 @@ export class AuthClient {
   isValid(token: string) {
     return this.client
       .IsValid({ token })
+      .catch(parseError)
       .then(r => r && (r.valid ? r.token : r.valid))
       .then(throwOnUndefined)
   }
@@ -276,6 +298,7 @@ export class AuthClient {
   canAccess(resource: string, level: 1 | 2, email: string) {
     return this.client
       .CanAccess({ resource, level, email })
+      .catch(parseError)
       .then(r => r && r.response)
       .then(throwOnUndefined)
   }
@@ -293,6 +316,7 @@ export class AuthClient {
         level,
         accessorId,
       })
+      .catch(parseError)
       .then(throwOnUndefined)
   }
 
@@ -309,6 +333,7 @@ export class AuthClient {
         level,
         accessorId,
       })
+      .catch(parseError)
       .then(throwOnUndefined)
   }
 
@@ -325,6 +350,7 @@ export class AuthClient {
         level,
         accessorId,
       })
+      .catch(parseError)
       .then(throwOnUndefined)
   }
 
@@ -341,6 +367,7 @@ export class AuthClient {
         level,
         accessorId,
       })
+      .catch(parseError)
       .then(throwOnUndefined)
   }
 
@@ -349,6 +376,9 @@ export class AuthClient {
    * @param loginReq Login request
    */
   loginAs(loginReq: M.LoginAsRequest) {
-    return this.client.LoginAs(loginReq).then(throwOnUndefined)
+    return this.client
+      .LoginAs(loginReq)
+      .catch(parseError)
+      .then(throwOnUndefined)
   }
 }

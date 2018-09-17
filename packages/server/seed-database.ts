@@ -35,7 +35,7 @@ Options:
 `
 
 const parseArgs = (): Args => {
-  const [execPath, executedFile, ...args] = process.argv
+  const [, , ...args] = process.argv
   if (args.length > 3) {
     console.log(helpStr)
     process.exit(1)
