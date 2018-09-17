@@ -12,7 +12,7 @@ import {
   IsDateString,
   IsEmpty,
 } from 'class-validator'
-import { authservices as M } from './auth_services'
+import { authservices as M } from './auth_services.proto'
 import { OptionalKeys } from './util'
 
 export class User

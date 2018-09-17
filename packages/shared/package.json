@@ -6,7 +6,7 @@
   "types": "build/index.d.ts",
   "scripts": {
     "build": "run-s clean && run-p build:*",
-    "build:proto": "proto2ts ../../proto/auth_services.proto > src/auth_services.ts",
+    "build:proto": "proto2ts ../../proto/auth_services.proto > src/auth_services.proto.ts",
     "build:main": "tsc -b .",
     "clean": "trash build test",
     "prepublishOnly": "npm run build"

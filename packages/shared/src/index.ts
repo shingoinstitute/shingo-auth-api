@@ -1,6 +1,6 @@
 import 'reflect-metadata'
 export * from './auth_services.interface'
-export { authservices } from './auth_services'
+export { authservices } from './auth_services.proto'
 export * from './Permission'
 export * from './Role'
 export * from './User'

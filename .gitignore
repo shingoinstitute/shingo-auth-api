@@ -80,3 +80,6 @@ docs
 yarn.lock
 coverage.*
 *.env
+# the .proto file must be the only source of truth.
+# Don't save changes made to generated ts interfaces
+*.proto.ts

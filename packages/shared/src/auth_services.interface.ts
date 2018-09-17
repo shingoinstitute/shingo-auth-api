@@ -1,4 +1,4 @@
-import { authservices as M } from './auth_services'
+import { authservices as M } from './auth_services.proto'
 import {
   IsString,
   IsNotEmpty,

@@ -1,20 +1,16 @@
 {
   "scripts": {
     "fix": "run-s fix:*",
-    "fix:prettier": "prettier \"src/**/*.ts\" --write",
+    "fix:prettier": "prettier \"packages/**/*.ts\" --write",
     "fix:tslint": "tslint --fix --project .",
     "test": "run-s build test:*",
-    "test:lint": "tslint --project . && prettier \"src/**/*.ts\" --list-different",
+    "test:lint": "tslint --project . && prettier \"packages/**/*.ts\" --list-different",
     "test:unit": "./scripts/test.js",
     "test:unit:watch": "./scripts/test.js --watch",
     "test:security": "npm audit",
-    "build": "run-s clean && run-p build:*",
-    "build:proto": "mkdir -p build/proto && cp -R src/proto build/ && mkdir -p build/shared && cp src/shared/auth_services.d.ts build/shared",
-    "build:main": "npm run proto-gen && tsc -p ./tsconfig.json",
-    "clean": "trash build test docs",
-    "proto-gen": "proto2ts src/proto/auth_services.proto > src/shared/auth_services.d.ts",
-    "prepack": "npm run build && cp -Rav build/* . | ./scripts/parseEmitted.sh build.emit",
-    "postpack": "./scripts/postpack.sh"
+    "build": "run-s build:*",
+    "build:proto": "lerna run build:proto",
+    "build:main": "lerna run build:main"
   },
   "devDependencies": {
     "@shingo/proto2ts": "^0.1.1",
