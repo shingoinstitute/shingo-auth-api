@@ -9,7 +9,7 @@
     "url": "git+https://github.com/shingoinstitute/shingo-auth-api.git"
   },
   "bin": {
-    "auth-api-server": "./server/app.js"
+    "auth-api-server": "./app.js"
   },
   "dependencies": {
     "@grpc/proto-loader": "^0.3.0",
