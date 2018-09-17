@@ -1,6 +1,6 @@
 {
   "name": "@shingo/auth-api-shared",
-  "version": "1.0.0-beta.0",
+  "version": "1.0.0-alpha.0",
   "description": "Shared library for shingo auth service",
   "main": "build/index.js",
   "types": "build/index.d.ts",
