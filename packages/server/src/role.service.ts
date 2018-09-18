@@ -1,16 +1,16 @@
-import { loggerFactory } from './logger.service'
 import { Role } from './database/mysql.service'
 import { Repository } from 'typeorm'
 import { InjectRepository } from 'typeorm-typedi-extensions'
-import { Service } from 'typedi'
+import { Service, Inject } from 'typedi'
 import { RequireKeys } from '@shingo/auth-api-shared'
+import { AUDIT_LOGGER } from './constants'
+import { Logger } from 'winston'
 
 @Service()
 export class RoleService {
-  auditLog = loggerFactory('auth-api.audit.log')
-
   constructor(
     @InjectRepository(Role) private roleRepository: Repository<Role>,
+    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   async create(role: Role): Promise<Role> {

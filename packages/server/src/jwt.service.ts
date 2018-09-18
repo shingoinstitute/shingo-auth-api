@@ -4,7 +4,7 @@ import { User } from './database/mysql.service'
 import { Repository } from 'typeorm'
 import * as jwt from 'jsonwebtoken'
 import { JWT_SECRET, LOGGER, AUDIT_LOGGER, JWT_ISSUER } from './constants'
-import { LoggerInstance } from 'winston'
+import { Logger } from 'winston'
 import { JWTPayload } from '@shingo/auth-api-shared'
 
 @Service()
@@ -13,8 +13,8 @@ export class JWTService {
     @InjectRepository(User) private userRepository: Repository<User>,
     @Inject(JWT_SECRET) private jwtSecret: string,
     @Inject(JWT_ISSUER) private issuer: string,
-    @Inject(LOGGER) private log: LoggerInstance,
-    @Inject(AUDIT_LOGGER) private auditLog: LoggerInstance,
+    @Inject(LOGGER) private log: Logger,
+    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   private getUser(payload: JWTPayload) {

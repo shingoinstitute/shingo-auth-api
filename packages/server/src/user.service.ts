@@ -1,9 +1,8 @@
-import { loggerFactory } from './logger.service'
 import { User } from './database/mysql.service'
 import * as scrypt from 'scrypt'
 import _ from 'lodash'
 import { NotFoundError } from './util'
-import { Service } from 'typedi'
+import { Service, Inject } from 'typedi'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
 import {
@@ -11,24 +10,17 @@ import {
   UserCreateData,
   RequireKeys,
 } from '@shingo/auth-api-shared'
+import { AUDIT_LOGGER } from './constants'
+import { Logger } from 'winston'
 
 @Service()
 export class UserService {
-  auditLog = loggerFactory('auth-api.audit.log')
-
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
+    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
-  async create(createData: Partial<UserCreateData>): Promise<User> {
-    if (
-      !createData.email ||
-      !createData.password ||
-      !createData.services ||
-      !createData.extId
-    ) {
-      throw new Error('Invalid user creation data')
-    }
+  async create(createData: UserCreateData): Promise<User> {
     const user = new User()
     user.email = createData.email
     user.password = (await scrypt.kdf(

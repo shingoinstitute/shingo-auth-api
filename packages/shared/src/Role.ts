@@ -2,8 +2,10 @@ import { Permission } from './Permission'
 import { User } from './User'
 import { Type } from 'class-transformer'
 import { IsNumber, IsString, IsOptional, IsEmpty } from 'class-validator'
+import { authservices as M } from './auth_services.proto'
+import { OptionalKeys } from './util'
 
-export class Role {
+export class Role implements OptionalKeys<Required<M.Role>, '_TagEmpty'> {
   @IsOptional({ groups: ['create'] })
   @IsEmpty({ groups: ['create'] })
   @IsNumber(undefined, { always: true })

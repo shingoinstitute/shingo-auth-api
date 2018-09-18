@@ -44,7 +44,6 @@ export const enum Level {
 
 export class QueryRequest implements Required<M.QueryRequest> {
   @IsString()
-  @IsNotEmpty()
   clause!: string
 
   constructor(clause: string | Required<M.QueryRequest>) {
@@ -55,7 +54,7 @@ export class QueryRequest implements Required<M.QueryRequest> {
 }
 
 export class UserJWT implements Required<M.UserJWT> {
-  @IsBase64()
+  @IsString()
   @IsNotEmpty()
   token!: string
 
@@ -208,43 +207,51 @@ export class RoleOperation implements Required<M.RoleOperation> {
 export class UserBatch implements Required<M.UserBatch> {
   @ValidateNested({ each: true })
   @Type(() => User)
-  users: User[]
+  users!: User[]
 
   constructor(users: User[] | Required<M.UserBatch>) {
-    this.users = Array.isArray(users) ? users : (users.users as User[])
+    if (typeof users !== 'undefined') {
+      this.users = Array.isArray(users) ? users : (users.users as User[])
+    }
   }
 }
 
 export class RoleBatch implements Required<M.RoleBatch> {
   @ValidateNested({ each: true })
   @Type(() => Role)
-  roles: Role[]
+  roles!: Role[]
 
   constructor(roles: Role[] | Required<M.RoleBatch>) {
-    this.roles = Array.isArray(roles) ? roles : (roles.roles as Role[])
+    if (typeof roles !== 'undefined') {
+      this.roles = Array.isArray(roles) ? roles : (roles.roles as Role[])
+    }
   }
 }
 
 export class PermissionBatch implements Required<M.PermissionBatch> {
   @ValidateNested({ each: true })
   @Type(() => Permission)
-  permissions: Permission[]
+  permissions!: Permission[]
 
   constructor(roles: Permission[] | Required<M.PermissionBatch>) {
-    this.permissions = Array.isArray(roles)
-      ? roles
-      : (roles.permissions as Permission[])
+    if (typeof roles !== 'undefined') {
+      this.permissions = Array.isArray(roles)
+        ? roles
+        : (roles.permissions as Permission[])
+    }
   }
 }
 
 export class LoginAsRequest implements Required<M.LoginAsRequest> {
   @IsNumber()
-  adminId: number
+  adminId!: number
   @IsNumber()
-  userId: number
+  userId!: number
 
   constructor(req: Required<M.LoginAsRequest>) {
-    this.adminId = req.adminId
-    this.userId = req.userId
+    if (typeof req !== 'undefined') {
+      this.adminId = req.adminId
+      this.userId = req.userId
+    }
   }
 }

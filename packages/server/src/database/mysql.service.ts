@@ -1,6 +1,6 @@
 import { createConnection, ConnectionOptions, useContainer } from 'typeorm'
 import { Permission, Role, User } from './entities'
-import { loggerFactory } from '../logger.service'
+import { loggerFactory } from '../logger.factory'
 import { Container as TypeDiContainer } from 'typedi'
 import { join } from 'path'
 

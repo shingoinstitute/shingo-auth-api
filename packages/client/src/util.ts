@@ -1,6 +1,7 @@
 import { PromisifyAll } from './promisify-fix'
 import { promisify } from 'util'
 import { ServiceError } from 'grpc'
+import { toClass } from '@shingo/auth-api-shared'
 
 /**
  * Binds all methods on an object using Proxy
@@ -42,13 +43,16 @@ export const promisifyAll = <T extends object>(obj: T): PromisifyAll<T> => {
   return new Proxy(obj, handler) as any
 }
 
+export const parseEmpty = <T>(x: T): T | undefined =>
+  (x as any).__tag_empty ? undefined : x
+
 export const parseError = (err: ServiceError) => {
   const errorMeta = err.metadata && err.metadata.get('error-bin')
   const parsedErrorMeta =
     errorMeta && errorMeta.map(e => JSON.parse(e.toString()))
 
   if (parsedErrorMeta && parsedErrorMeta.length > 0) {
-    throw parsedErrorMeta[0]
+    throw toClass(Error)(parsedErrorMeta[0])
   }
 
   throw err

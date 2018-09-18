@@ -4,10 +4,10 @@
     "fix:prettier": "prettier \"packages/**/*.ts\" --write",
     "fix:tslint": "tslint --fix --project .",
     "test": "run-s build test:*",
-    "test:lint": "tslint --project packages && prettier \"packages/**/*.ts\" --list-different",
+    "test:lint": "prettier \"packages/**/*.ts\" --list-different && lerna exec -- tslint --project .",
     "test:unit": "./scripts/test.js",
     "test:unit:watch": "./scripts/test.js --watch",
-    "test:security": "npm audit",
+    "test:security": "npm audit && lerna run test:security",
     "build": "run-s build:*",
     "build:proto": "lerna run build:proto",
     "build:main": "lerna run build:main"
@@ -26,62 +26,5 @@
     "tslint": "^5.11.0",
     "tslint-config-prettier": "^1.15.0",
     "typescript": "^3.0.3"
-  },
-  "prettier": {
-    "semi": false,
-    "singleQuote": true,
-    "trailingComma": "all"
-  },
-  "jest": {
-    "globals": {
-      "ts-jest": {
-        "tsConfigFile": "tsconfig.spec.json"
-      }
-    },
-    "coverageThreshold": {
-      "global": {
-        "branches": 95,
-        "functions": 95,
-        "lines": 95,
-        "statements": -15
-      }
-    },
-    "collectCoverageFrom": [
-      "src/**/*.{js,jsx,mjs,ts,tsx}"
-    ],
-    "coveragePathIgnorePatterns": [
-      "/node_modules/",
-      ".*\\.d\\.ts",
-      "<rootDir>/src/(.*)?/__tests__/(.*)?\\.helper\\.ts",
-      "<rootDir>/src/(.*)?/__tests__/(.*)?__helper__(.*)"
-    ],
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "<rootDir>/src/(.*)?/__tests__/(.*)?\\.helper\\.ts",
-      "<rootDir>/src/(.*)?/__tests__/(.*)?__helper__(.*)"
-    ],
-    "testMatch": [
-      "<rootDir>/src/**/__tests__/**/*.{js,jsx,mjs,ts,tsx}",
-      "<rootDir>/src/**/?(*.)(spec|test).{js,jsx,mjs,ts,tsx}"
-    ],
-    "testEnvironment": "node",
-    "testURL": "http://localhost",
-    "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
-    },
-    "transformIgnorePatterns": [
-      "[/\\\\]node_modules[/\\\\].+\\.(js|jsx|mjs|ts|tsx)$"
-    ],
-    "moduleFileExtensions": [
-      "web.js",
-      "js",
-      "json",
-      "web.jsx",
-      "jsx",
-      "node",
-      "mjs",
-      "ts",
-      "tsx"
-    ]
   }
 }

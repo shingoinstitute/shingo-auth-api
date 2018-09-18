@@ -8,7 +8,7 @@ import { Service, Inject } from 'typedi'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
 import { LOGGER, AUDIT_LOGGER } from './constants'
-import { LoggerInstance } from 'winston'
+import { Logger } from 'winston'
 import { JWTService } from './jwt.service'
 import {
   Credentials,
@@ -28,8 +28,8 @@ export class AuthService {
     private userService: UserService,
     private permissionService: PermissionService,
     private jwtService: JWTService,
-    @Inject(LOGGER) private log: LoggerInstance,
-    @Inject(AUDIT_LOGGER) private auditLog: LoggerInstance,
+    @Inject(LOGGER) private log: Logger,
+    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   async login(creds: Credentials): Promise<string> {
@@ -119,21 +119,10 @@ export class AuthService {
   }
 
   async grantToUser(grantRequest: GrantRequest): Promise<PermissionSet> {
-    const permission = await this.permissionService
-      .readOne(
-        `permission.resource='${grantRequest.resource}' AND permission.level=${
-          grantRequest.level
-        }`,
-      )
-      .then(
-        p =>
-          typeof p === 'undefined'
-            ? this.permissionService.create({
-                resource: grantRequest.resource,
-                level: grantRequest.level,
-              })
-            : p,
-      )
+    const permission = await this.permissionService.readOrCreate(
+      grantRequest,
+      true,
+    )
 
     const updateData = {
       id: permission.id,
@@ -150,21 +139,10 @@ export class AuthService {
   }
 
   async grantToRole(grantRequest: GrantRequest): Promise<PermissionSet> {
-    const permission = await this.permissionService
-      .readOne(
-        `permission.resource='${grantRequest.resource}' AND permission.level=${
-          grantRequest.level
-        }`,
-      )
-      .then(
-        p =>
-          typeof p === 'undefined'
-            ? this.permissionService.create({
-                resource: grantRequest.resource,
-                level: grantRequest.level,
-              })
-            : p,
-      )
+    const permission = await this.permissionService.readOrCreate(
+      grantRequest,
+      true,
+    )
 
     const updateData = {
       id: permission.id,

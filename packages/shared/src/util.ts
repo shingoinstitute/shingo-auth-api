@@ -1,4 +1,4 @@
-import { plainToClass } from 'class-transformer'
+import { plainToClass, classToPlain } from 'class-transformer'
 import { validate, ValidationError as VError } from 'class-validator'
 
 export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
@@ -24,6 +24,8 @@ export interface ClassType<T> {
 
 export const toClass = <T>(cls: ClassType<T>) => (plain: object) =>
   plainToClass(cls, plain)
+
+export { classToPlain }
 
 export const validateInput = <T>(
   cls: ClassType<T>,

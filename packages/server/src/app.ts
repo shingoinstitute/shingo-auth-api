@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import 'reflect-metadata'
-import { loggerFactory } from './logger.service'
+import { loggerFactory } from './logger.factory'
 import { AuthMicroservice } from './microservices/auth.microservice'
 import * as grpc from 'grpc'
 import { mysqlConnection } from './database/mysql.service'

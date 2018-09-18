@@ -10,8 +10,11 @@ import {
   IsEmpty,
 } from 'class-validator'
 import { Level } from './auth_services.interface'
+import { authservices as M } from './auth_services.proto'
+import { OptionalKeys } from './util'
 
-export class Permission {
+export class Permission
+  implements OptionalKeys<Required<M.Permission>, '_TagEmpty'> {
   @IsOptional({ groups: ['create', 'delete'] })
   @IsEmpty({ groups: ['create'] })
   @IsNumber(undefined, { always: true })

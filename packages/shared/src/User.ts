@@ -16,7 +16,8 @@ import { authservices as M } from './auth_services.proto'
 import { OptionalKeys } from './util'
 
 export class User
-  implements OptionalKeys<Required<M.User>, 'resetToken' | 'lastLogin'> {
+  implements
+    OptionalKeys<Required<M.User>, 'resetToken' | 'lastLogin' | '_TagEmpty'> {
   // empty and optional together will mean not defined
   @ValidateIf(o => typeof o.extId === 'undefined', { groups: ['update'] })
   @IsEmpty({ groups: ['create'] })

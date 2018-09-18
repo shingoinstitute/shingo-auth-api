@@ -1,7 +1,7 @@
 import * as path from 'path'
 import { Options as ProtoOptions, loadSync } from '@grpc/proto-loader'
 import * as grpc from 'grpc'
-import { bindAll, promisifyAll, parseError } from './util'
+import { bindAll, promisifyAll, parseError, parseEmpty } from './util'
 import {
   UserCreateData,
   PermissionCreateData,
@@ -50,7 +50,7 @@ export class AuthClient {
     return this.client
       .ReadUser({ clause: clause || '' })
       .catch(parseError)
-      .then(b => b && b.users)
+      .then(b => b && (b.users || []))
       .then(throwOnUndefined)
   }
 
@@ -64,7 +64,7 @@ export class AuthClient {
         clause: clause || '',
       })
       .catch(parseError)
-      .then(throwOnUndefined)
+      .then(parseEmpty)
   }
 
   /**
@@ -98,11 +98,7 @@ export class AuthClient {
    * Delete a user
    * @param user User to delete. Either id or extId is required to identify the user
    */
-  deleteUser(
-    user:
-      | RequireKeys<Partial<M.User>, 'id'>
-      | RequireKeys<Partial<M.User>, 'extId'>,
-  ) {
+  deleteUser(user: RequireKeys<M.User, 'id'> | RequireKeys<M.User, 'extId'>) {
     return this.client
       .DeleteUser(user)
       .catch(parseError)
@@ -114,7 +110,7 @@ export class AuthClient {
    * Add a role to a user
    * @param set User and role to associate
    */
-  addRoleToUser(set: M.RoleOperation) {
+  addRoleToUser(set: Required<M.RoleOperation>) {
     return this.client
       .AddRoleToUser(set)
       .catch(parseError)
@@ -126,7 +122,7 @@ export class AuthClient {
    * Remove a role from a user
    * @param set User and role to disassociate
    */
-  removeRoleFromUser(set: M.RoleOperation) {
+  removeRoleFromUser(set: Required<M.RoleOperation>) {
     return this.client
       .RemoveRoleFromUser(set)
       .catch(parseError)
@@ -142,7 +138,7 @@ export class AuthClient {
     return this.client
       .ReadPermission({ clause: clause || '' })
       .catch(parseError)
-      .then(r => r && r.permissions)
+      .then(r => r && (r.permissions || [])) // grpc removes empty arrays and other empty responses, which is stupid and super annoying
       .then(throwOnUndefined)
   }
 
@@ -156,7 +152,7 @@ export class AuthClient {
         clause: clause || '',
       })
       .catch(parseError)
-      .then(throwOnUndefined)
+      .then(parseEmpty) // grpc/protobuf has no concept of undefined or optional, so we have to tag an object with __tag_empty: true when sending undefined
   }
 
   /**
@@ -174,7 +170,7 @@ export class AuthClient {
    * Update a permission
    * @param permission Patch data to overwrite the existing permission. id field is required to identify permission
    */
-  updatePermission(permission: RequireKeys<Partial<M.Permission>, 'id'>) {
+  updatePermission(permission: RequireKeys<M.Permission, 'id'>) {
     return this.client
       .UpdatePermission(permission)
       .catch(parseError)
@@ -186,9 +182,7 @@ export class AuthClient {
    * Delete a permission
    * @param obj Permission to delete. id field is required to identify permission
    */
-  deletePermission(
-    obj: RequireKeys<Partial<M.Permission>, 'id'>,
-  ): Promise<boolean>
+  deletePermission(obj: RequireKeys<M.Permission, 'id'>): Promise<boolean>
   /**
    * Delete a permission identified by resource and level
    * @param resource Permission resource
@@ -196,7 +190,7 @@ export class AuthClient {
    */
   deletePermission(resource: string, level: Level): Promise<boolean>
   deletePermission(
-    arg1: RequireKeys<Partial<M.Permission>, 'id'> | string,
+    arg1: RequireKeys<M.Permission, 'id'> | string,
     arg2?: Level,
   ): Promise<boolean> {
     const obj =
@@ -216,7 +210,7 @@ export class AuthClient {
     return this.client
       .ReadRole({ clause: clause || '' })
       .catch(parseError)
-      .then(r => r && r.roles)
+      .then(r => r && (r.roles || []))
       .then(throwOnUndefined)
   }
 
@@ -230,7 +224,7 @@ export class AuthClient {
         clause: clause || '',
       })
       .catch(parseError)
-      .then(throwOnUndefined)
+      .then(parseEmpty)
   }
 
   /**
@@ -245,7 +239,7 @@ export class AuthClient {
    * Update a role
    * @param role Patch data to overwrite the existing role. id field is required to identify role
    */
-  updateRole(role: RequireKeys<Partial<M.Role>, 'id'>) {
+  updateRole(role: RequireKeys<M.Role, 'id'>) {
     return this.client
       .UpdateRole(role)
       .catch(parseError)
@@ -257,7 +251,7 @@ export class AuthClient {
    * Delete a role
    * @param role Role to delete. id field is required to identify role
    */
-  deleteRole(role: RequireKeys<Partial<M.Role>, 'id'>) {
+  deleteRole(role: RequireKeys<M.Role, 'id'>) {
     return this.client
       .DeleteRole(role)
       .catch(parseError)
@@ -269,7 +263,7 @@ export class AuthClient {
    * Login a user
    * @param creds Email and password credentials
    */
-  login(creds: { email: string; password: string; services?: string }) {
+  login(creds: RequireKeys<M.Credentials, 'email' | 'password'>) {
     return this.client
       .Login(creds)
       .catch(parseError)
@@ -375,10 +369,11 @@ export class AuthClient {
    * Log an admin in as a user
    * @param loginReq Login request
    */
-  loginAs(loginReq: M.LoginAsRequest) {
+  loginAs(loginReq: Required<M.LoginAsRequest>) {
     return this.client
       .LoginAs(loginReq)
       .catch(parseError)
+      .then(r => r && r.token)
       .then(throwOnUndefined)
   }
 }

@@ -1,21 +1,21 @@
 import { Permission } from './database/mysql.service'
 import _ from 'lodash'
-import { loggerFactory } from './logger.service'
 import { Repository } from 'typeorm'
 import { InjectRepository } from 'typeorm-typedi-extensions'
-import { Service } from 'typedi'
+import { Service, Inject } from 'typedi'
 import { PermissionCreateData, RequireKeys } from '@shingo/auth-api-shared'
+import { AUDIT_LOGGER } from './constants'
+import { Logger } from 'winston'
 
 @Service()
 export class PermissionService {
-  auditLog = loggerFactory('auth-api.audit.log')
-
   constructor(
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>,
+    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
-  async create(permission: PermissionCreateData): Promise<Permission> {
+  private create(permission: PermissionCreateData): Promise<Permission> {
     return this.permissionRepository
       .save(this.permissionRepository.create(permission))
       .then(p => {
@@ -24,8 +24,22 @@ export class PermissionService {
       })
   }
 
+  readOrCreate(
+    permission: PermissionCreateData,
+    readFull = false,
+  ): Promise<Permission> {
+    return (readFull
+      ? this.readOne(
+          `permission.level = ${permission.level} AND permission.resource = '${
+            permission.resource
+          }'`,
+        )
+      : this.permissionRepository.findOne(permission)
+    ).then(p => (typeof p === 'undefined' ? this.create(permission) : p))
+  }
+
   // FIXME: Possible SQL Injection
-  async read(clause: string): Promise<Permission[]> {
+  read(clause: string): Promise<Permission[]> {
     return this.permissionRepository
       .createQueryBuilder('permission')
       .leftJoinAndSelect('permission.users', 'users')
@@ -35,7 +49,7 @@ export class PermissionService {
   }
 
   // FIXME: Possible SQL Injection
-  async readOne(clause: string): Promise<Permission | undefined> {
+  readOne(clause: string): Promise<Permission | undefined> {
     return this.permissionRepository
       .createQueryBuilder('permission')
       .leftJoinAndSelect('permission.users', 'users')
@@ -44,9 +58,7 @@ export class PermissionService {
       .getOne()
   }
 
-  async update(
-    permission: RequireKeys<Partial<Permission>, 'id'>,
-  ): Promise<boolean> {
+  update(permission: RequireKeys<Partial<Permission>, 'id'>): Promise<boolean> {
     return this.permissionRepository.save(permission).then(data => {
       this.auditLog.info(
         'Permisson updated. patch: %j, new: %j',
@@ -57,7 +69,11 @@ export class PermissionService {
     })
   }
 
-  async delete(permission: Permission): Promise<boolean> {
+  async delete(
+    permission:
+      | RequireKeys<Partial<Permission>, 'id'>
+      | RequireKeys<Partial<Permission>, 'resource' | 'level'>,
+  ): Promise<boolean> {
     const id = await (typeof permission.id === 'undefined'
       ? this.permissionRepository
           .findOne({ resource: permission.resource, level: permission.level })

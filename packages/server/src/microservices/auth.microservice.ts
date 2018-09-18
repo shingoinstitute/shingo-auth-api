@@ -1,4 +1,4 @@
-import { loggerFactory } from '../logger.service'
+import { loggerFactory } from '../logger.factory'
 import * as grpc from 'grpc'
 import * as path from 'path'
 import {
@@ -9,8 +9,7 @@ import {
 } from '../index'
 import { Options as ProtoOptions, loadSync } from '@grpc/proto-loader'
 import { Service } from 'typedi'
-import { handleUnary, undefinedToNull } from '../util'
-import { classToPlain } from 'class-transformer'
+import { handleUnary, undefinedToEmpty } from '../util'
 import { pipe } from '../fp'
 import { User, Permission, Role } from '../database/entities'
 import {
@@ -23,12 +22,12 @@ import {
   LoginAsRequest,
   authservices as M,
   validateInput,
+  classToPlain,
 } from '@shingo/auth-api-shared'
 
 // tslint:disable:variable-name no-shadowed-variable
 
 const log = loggerFactory()
-
 const makeUnaryCall = handleUnary(log)
 
 @Service()
@@ -90,7 +89,7 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
           this.userService
             .readOne(clause)
             .then(c => c && (classToPlain(c) as M.User))
-            .then(undefinedToNull),
+            .then(undefinedToEmpty),
         ),
     ),
   )
@@ -155,7 +154,7 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
       req =>
         req.then(perm =>
           this.permissionService
-            .create(perm)
+            .readOrCreate(perm)
             .then(v => classToPlain(v) as M.Permission),
         ),
     ),
@@ -185,7 +184,7 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
           this.permissionService
             .readOne(clause)
             .then(p => p && (classToPlain(p) as M.Permission))
-            .then(undefinedToNull),
+            .then(undefinedToEmpty),
         ),
     ),
   )
@@ -222,7 +221,10 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
     'createRole',
     pipe(
       validateInput(Role, { groups: ['create'] }),
-      req => req.then(role => this.roleService.create(role)),
+      req =>
+        req
+          .then(role => this.roleService.create(role))
+          .then(role => classToPlain(role)),
     ),
   )
 
@@ -250,7 +252,7 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
           this.roleService
             .readOne(clause)
             .then(r => r && (classToPlain(r) as M.Role))
-            .then(undefinedToNull),
+            .then(undefinedToEmpty),
         ),
     ),
   )
