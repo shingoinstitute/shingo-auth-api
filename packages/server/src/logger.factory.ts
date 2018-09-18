@@ -1,4 +1,4 @@
-import { LoggerOptions, transports, createLogger } from 'winston'
+import { LoggerOptions, transports, createLogger, format } from 'winston'
 import * as path from 'path'
 
 export interface LoggerFactoryOptions {
@@ -25,14 +25,23 @@ export const loggerFactory = (options?: string | LoggerFactoryOptions) => {
 
   const logLevel = (opts && opts.level) || process.env.LOG_LEVEL || 'info'
 
+  const f = format.combine(
+    format.splat(),
+    format.timestamp(),
+    format.printf(info => `${info.timestamp} - ${info.level}: ${info.message}`),
+  )
+
   const logTransports = [
-    new transports.Console(),
+    new transports.Console({
+      format: format.combine(format.colorize(), f),
+    }),
     new transports.File({ filename: path.join(logPath, logName) }),
   ]
 
   const logOptions: LoggerOptions = {
     transports: logTransports,
     level: logLevel,
+    format: f,
   }
 
   return createLogger(logOptions)
