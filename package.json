@@ -2,18 +2,17 @@
   "scripts": {
     "fix": "run-s fix:*",
     "fix:prettier": "prettier \"packages/**/*.ts\" --write",
-    "fix:tslint": "tslint --fix --project .",
+    "fix:tslint": "lerna exec -- tslint --fix -p .",
     "test": "run-s build test:*",
-    "test:lint": "prettier \"packages/**/*.ts\" --list-different && lerna exec -- tslint --project .",
+    "test:lint": "prettier \"packages/**/*.ts\" --list-different && lerna exec -- tslint -p .",
     "test:unit": "./scripts/test.js",
     "test:unit:watch": "./scripts/test.js --watch",
-    "test:security": "npm audit && lerna run test:security",
+    "test:security": "npm audit && lerna exec -- npm audit",
     "build": "run-s build:*",
     "build:proto": "lerna run build:proto",
     "build:main": "lerna run build:main"
   },
   "devDependencies": {
-    "@shingo/proto2ts": "^0.1.1",
     "@shingo/tslint-rules": "^1.1.0",
     "@types/jest": "^23.3.2",
     "jest": "^23.6.0",
@@ -22,7 +21,6 @@
     "prettier": "^1.14.2",
     "trash-cli": "^1.4.0",
     "ts-jest": "^23.1.4",
-    "ts-node": "^7.0.0",
     "tslint": "^5.11.0",
     "tslint-config-prettier": "^1.15.0",
     "typescript": "^3.0.3"

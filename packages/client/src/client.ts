@@ -19,6 +19,8 @@ const throwOnUndefined = <T>(x: T | undefined): T => {
   return x
 }
 
+export { UserCreateData, PermissionCreateData, RoleCreateData, Level, M as authservices }
+
 export class AuthClient {
   client: PromisifyAll<M.AuthServiceClient>
 
