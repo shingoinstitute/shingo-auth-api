@@ -21,6 +21,13 @@ import {
 
 // This api is full of potential sql injection :(
 
+interface ResetToken {
+  lastLogin: string
+  id: number
+  email: string
+  issuedAt: string
+}
+
 @Service()
 export class AuthService {
   constructor(
@@ -78,7 +85,26 @@ export class AuthService {
   }
 
   async isValid(token: string): Promise<JWTPayload | false> {
-    return this.jwtService.isValid(token)
+    const decoded = await this.jwtService.isValid(token)
+
+    if (!decoded) return decoded
+
+    const user = await this.userRepository.findOne(decoded)
+
+    if (!user) {
+      this.auditLog.warn(
+        '[INVALID_TOKEN] isValid returned false: User not found ' + token,
+      )
+      return false
+    }
+
+    this.auditLog.info(
+      `User ${decoded.email}${
+        decoded.extId ? ':' + decoded.extId : ''
+      } authenticated`,
+    )
+
+    return decoded
   }
 
   private userHasAccess(user: User, ...reqs: AccessRequest[]): AccessRequest[] {
@@ -204,6 +230,49 @@ export class AuthService {
     this.auditLog.info('[ROLE]  Permission Revoke Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
+  }
+
+  /**
+   * Generates a reset token for a user
+   * @param email the users email
+   */
+  async generateResetToken(email: string): Promise<null | string> {
+    const user = await this.userRepository.findOne({ email })
+    if (!user) return null
+
+    const token: ResetToken = {
+      lastLogin: user.lastLogin,
+      id: user.id,
+      email: user.email,
+      issuedAt: new Date().toISOString(),
+    }
+
+    return this.jwtService.issue(token, '2 hours')
+  }
+
+  /**
+   * Given a valid reset token and a new password,
+   * resets the password and returns a new logged in token
+   *
+   * @param token a valid reset token
+   * @param password the new password
+   */
+  async resetPassword(
+    token: string,
+    password: string,
+  ): Promise<string | false> {
+    // TODO: have isValid return reason for invalid token
+    const decoded = await this.jwtService.isValid<ResetToken>(token)
+    if (!decoded) return decoded
+
+    // we shouldn't need to verify, since the token is signed with our secret - no way to create a token for another user's email
+    // const user = this.userRepository.find({ email: decoded.email })
+    const success = await this.userService.update({ id: decoded.id, password })
+    if (!success) {
+      throw new Error(`Unable to reset password for user ${decoded.email}`)
+    }
+
+    return this.login({ email: decoded.email, password })
   }
 
   /**

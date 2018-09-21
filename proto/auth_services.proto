@@ -43,9 +43,9 @@ service AuthService {
 
     rpc DeleteRole(Role) returns (BooleanResponse) {}
 
-    rpc Login(Credentials) returns (UserJWT) {}
+    rpc Login(Credentials) returns (StringValue) {}
 
-    rpc IsValid(UserJWT) returns (IsValidResponse) {}
+    rpc IsValid(StringValue) returns (IsValidResponse) {}
 
     rpc CanAccess(AccessRequest) returns (BooleanResponse) {}
 
@@ -57,16 +57,29 @@ service AuthService {
 
     rpc RevokePermissionFromRole(GrantRequest) returns (PermissionSet) {}
 
-    rpc LoginAs(LoginAsRequest) returns (UserJWT) {}
+    rpc LoginAs(LoginAsRequest) returns (StringValue) {}
 
+    rpc GenerateResetToken(StringValue) returns (MaybeStringValue) {}
+
+    rpc ResetPassword(ResetParams) returns (MaybeStringValue) {}
 }
 
 message QueryRequest {
     string clause = 1;
 }
 
-message UserJWT {
-    string token = 1;
+message StringValue {
+  string value = 1;
+}
+
+message MaybeStringValue {
+  string value = 1;
+  bool hasValue = 2;
+}
+
+message ResetParams {
+  string token = 1;
+  string password = 2;
 }
 
 message BooleanResponse {

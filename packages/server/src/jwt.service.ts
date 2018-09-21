@@ -1,7 +1,4 @@
 import { Service, Inject } from 'typedi'
-import { InjectRepository } from 'typeorm-typedi-extensions'
-import { User } from './database/mysql.service'
-import { Repository } from 'typeorm'
 import * as jwt from 'jsonwebtoken'
 import { JWT_SECRET, LOGGER, AUDIT_LOGGER, JWT_ISSUER } from './constants'
 import { Logger } from 'winston'
@@ -10,23 +7,18 @@ import { JWTPayload } from '@shingo/auth-api-shared'
 @Service()
 export class JWTService {
   constructor(
-    @InjectRepository(User) private userRepository: Repository<User>,
     @Inject(JWT_SECRET) private jwtSecret: string,
     @Inject(JWT_ISSUER) private issuer: string,
     @Inject(LOGGER) private log: Logger,
     @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
-  private getUser(payload: JWTPayload) {
-    return this.userRepository.findOne(payload, { loadEagerRelations: false })
-  }
-
-  async issue(payload: JWTPayload) {
+  async issue<T extends object = JWTPayload>(payload: T, expiresIn = '2 days') {
     return new Promise<string>((res, rej) =>
       jwt.sign(
         payload,
         this.jwtSecret,
-        { issuer: this.issuer, expiresIn: '2 days' },
+        { issuer: this.issuer, expiresIn },
         (err, token) => {
           if (err) rej(err)
           res(token)
@@ -39,15 +31,15 @@ export class JWTService {
    * Verifies that a jwt token is valid
    * @param token a jwt token
    */
-  isValid(token: string): Promise<false | JWTPayload> {
-    return new Promise<JWTPayload | string>((res, rej) => {
+  isValid<T extends object = JWTPayload>(token: string): Promise<false | T> {
+    return new Promise<T | string>((res, rej) => {
       if (token === '' || typeof token === 'undefined') {
         throw new Error('INVALID_TOKEN')
       }
 
       jwt.verify(token, this.jwtSecret, { issuer: this.issuer }, (err, tok) => {
         if (err) rej(err)
-        res(tok as JWTPayload | string)
+        res(tok as T | string)
       })
     })
       .then(async decoded => {
@@ -57,22 +49,6 @@ export class JWTService {
           )
           return false
         }
-
-        const user = await this.getUser(decoded)
-
-        if (!user) {
-          this.auditLog.warn(
-            '[INVALID_TOKEN] isValid returned false: User not found ' + token,
-          )
-          return false
-        }
-
-        this.auditLog.info(
-          `User ${decoded.email}${
-            decoded.extId ? ':' + decoded.extId : ''
-          } authenticated`,
-        )
-
         return decoded
       })
       .catch<false>((reason: jwt.VerifyErrors | Error) => {

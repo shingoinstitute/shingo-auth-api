@@ -19,7 +19,13 @@ const throwOnUndefined = <T>(x: T | undefined): T => {
   return x
 }
 
-export { UserCreateData, PermissionCreateData, RoleCreateData, Level, M as authservices }
+export {
+  UserCreateData,
+  PermissionCreateData,
+  RoleCreateData,
+  Level,
+  M as authservices,
+}
 
 export class AuthClient {
   client: PromisifyAll<M.AuthServiceClient>
@@ -67,6 +73,10 @@ export class AuthClient {
       })
       .catch(parseError)
       .then(parseEmpty)
+  }
+
+  getUserOrFail(clause?: string) {
+    return this.getUser(clause).then(throwOnUndefined)
   }
 
   /**
@@ -157,6 +167,10 @@ export class AuthClient {
       .then(parseEmpty) // grpc/protobuf has no concept of undefined or optional, so we have to tag an object with __tag_empty: true when sending undefined
   }
 
+  getPermissionOrFail(clause?: string) {
+    return this.getPermission(clause).then(throwOnUndefined)
+  }
+
   /**
    * Create a permission
    * @param permission Data to create the permission with
@@ -229,6 +243,10 @@ export class AuthClient {
       .then(parseEmpty)
   }
 
+  getRoleOrFail(clause?: string) {
+    return this.getRole(clause).then(throwOnUndefined)
+  }
+
   /**
    * Create a role
    * @param role Data to create role with
@@ -269,7 +287,7 @@ export class AuthClient {
     return this.client
       .Login(creds)
       .catch(parseError)
-      .then(r => r && r.token)
+      .then(r => r && r.value)
       .then(throwOnUndefined)
   }
 
@@ -277,9 +295,9 @@ export class AuthClient {
    * Check if jwt is valid
    * @param token JWT token
    */
-  isValid(token: string) {
+  isValid(value: string) {
     return this.client
-      .IsValid({ token })
+      .IsValid({ value })
       .catch(parseError)
       .then(r => r && (r.valid ? r.token : r.valid))
       .then(throwOnUndefined)
@@ -375,7 +393,27 @@ export class AuthClient {
     return this.client
       .LoginAs(loginReq)
       .catch(parseError)
-      .then(r => r && r.token)
+      .then(r => r && r.value)
       .then(throwOnUndefined)
+  }
+
+  generateResetToken(email: string) {
+    return this.client
+      .GenerateResetToken({ value: email })
+      .catch(parseError)
+      .then(r => {
+        if (r && r.value && r.hasValue) {
+          return r.value
+        }
+      })
+      .then(throwOnUndefined)
+  }
+
+  resetPassword(token: string, password: string) {
+    return this.client.ResetPassword({ token, password }).then(r => {
+      if (r && r.value && r.hasValue) {
+        return r.value
+      }
+    })
   }
 }

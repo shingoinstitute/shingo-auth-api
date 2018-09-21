@@ -53,14 +53,31 @@ export class QueryRequest implements Required<M.QueryRequest> {
   }
 }
 
-export class UserJWT implements Required<M.UserJWT> {
+export class StringValue implements Required<M.StringValue> {
+  @IsString()
+  @IsNotEmpty()
+  value!: string
+
+  constructor(token: string | Required<M.StringValue>) {
+    if (typeof token !== 'undefined') {
+      this.value = typeof token === 'string' ? token : token.value
+    }
+  }
+}
+
+export class ResetParams implements Required<M.ResetParams> {
   @IsString()
   @IsNotEmpty()
   token!: string
 
-  constructor(token: string | Required<M.UserJWT>) {
-    if (typeof token !== 'undefined') {
-      this.token = typeof token === 'string' ? token : token.token
+  @IsString()
+  @IsNotEmpty()
+  password!: string
+
+  constructor(params: Required<M.ResetParams>) {
+    if (params) {
+      this.token = params.token
+      this.password = params.password
     }
   }
 }

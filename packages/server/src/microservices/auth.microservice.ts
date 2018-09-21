@@ -16,13 +16,14 @@ import {
   QueryRequest,
   RoleOperation,
   Credentials,
-  UserJWT,
+  StringValue,
   AccessRequest,
   GrantRequest,
   LoginAsRequest,
   authservices as M,
   validateInput,
   classToPlain,
+  ResetParams,
 } from '@shingo/auth-api-shared'
 
 // tslint:disable:variable-name no-shadowed-variable
@@ -291,7 +292,7 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
       validateInput(Credentials),
       req =>
         req.then(creds =>
-          this.authService.login(creds).then(token => ({ token })),
+          this.authService.login(creds).then(value => ({ value })),
         ),
     ),
   )
@@ -300,11 +301,11 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
   IsValid = makeUnaryCall(
     'isValid',
     pipe(
-      validateInput(UserJWT),
+      validateInput(StringValue),
       req =>
-        req.then(({ token }) =>
+        req.then(({ value }) =>
           this.authService
-            .isValid(token)
+            .isValid(value)
             .then(
               token =>
                 !token
@@ -369,7 +370,35 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
       validateInput(LoginAsRequest),
       req =>
         req.then(req =>
-          this.authService.loginAs(req).then(token => ({ token })),
+          this.authService.loginAs(req).then(value => ({ value })),
+        ),
+    ),
+  )
+
+  GenerateResetToken = makeUnaryCall(
+    'generateResetToken',
+    pipe(
+      validateInput(StringValue),
+      req =>
+        req.then(req =>
+          this.authService.generateResetToken(req.value).then(r => {
+            if (r === null) return { hasValue: false }
+            return { value: r }
+          }),
+        ),
+    ),
+  )
+
+  ResetPassword = makeUnaryCall(
+    'resetPassword',
+    pipe(
+      validateInput(ResetParams),
+      req =>
+        req.then(req =>
+          this.authService.resetPassword(req.token, req.password).then(r => {
+            if (r === false) return { hasValue: false }
+            return { value: r }
+          }),
         ),
     ),
   )
