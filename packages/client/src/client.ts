@@ -401,19 +401,14 @@ export class AuthClient {
     return this.client
       .GenerateResetToken({ value: email })
       .catch(parseError)
-      .then(r => {
-        if (r && r.value && r.hasValue) {
-          return r.value
-        }
-      })
+      .then(r => r && r.value)
       .then(throwOnUndefined)
   }
 
   resetPassword(token: string, password: string) {
-    return this.client.ResetPassword({ token, password }).then(r => {
-      if (r && r.value && r.hasValue) {
-        return r.value
-      }
-    })
+    return this.client
+      .ResetPassword({ token, password })
+      .then(r => r && r.value)
+      .then(throwOnUndefined)
   }
 }

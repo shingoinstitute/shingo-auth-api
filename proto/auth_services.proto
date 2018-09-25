@@ -59,9 +59,9 @@ service AuthService {
 
     rpc LoginAs(LoginAsRequest) returns (StringValue) {}
 
-    rpc GenerateResetToken(StringValue) returns (MaybeStringValue) {}
+    rpc GenerateResetToken(StringValue) returns (StringValue) {}
 
-    rpc ResetPassword(ResetParams) returns (MaybeStringValue) {}
+    rpc ResetPassword(ResetParams) returns (StringValue) {}
 }
 
 message QueryRequest {
@@ -70,11 +70,6 @@ message QueryRequest {
 
 message StringValue {
   string value = 1;
-}
-
-message MaybeStringValue {
-  string value = 1;
-  bool hasValue = 2;
 }
 
 message ResetParams {

@@ -4,6 +4,14 @@ import { JWT_SECRET, LOGGER, AUDIT_LOGGER, JWT_ISSUER } from './constants'
 import { Logger } from 'winston'
 import { JWTPayload } from '@shingo/auth-api-shared'
 
+export class InvalidTokenError extends Error {
+  name = 'INVALID_TOKEN'
+  constructor(readonly token: string, message?: string) {
+    super(message)
+  }
+}
+
+// tslint:disable-next-line:max-classes-per-file
 @Service()
 export class JWTService {
   constructor(
@@ -31,48 +39,51 @@ export class JWTService {
    * Verifies that a jwt token is valid
    * @param token a jwt token
    */
-  isValid<T extends object = JWTPayload>(token: string): Promise<false | T> {
-    return new Promise<T | string>((res, rej) => {
-      if (token === '' || typeof token === 'undefined') {
-        throw new Error('INVALID_TOKEN')
+  async isValid<T extends object = JWTPayload>(token: string): Promise<T> {
+    try {
+      const decoded = await new Promise<T | string>((res, rej) => {
+        if (token === '' || typeof token === 'undefined') {
+          throw new InvalidTokenError(token, 'Token was empty or undefined')
+        }
+
+        jwt.verify(
+          token,
+          this.jwtSecret,
+          { issuer: this.issuer },
+          (err, tok) => {
+            if (err) rej(err)
+            res(tok as T | string)
+          },
+        )
+      })
+
+      if (typeof decoded === 'string') {
+        throw new InvalidTokenError(token, 'Invalid Payload: ' + decoded)
       }
 
-      jwt.verify(token, this.jwtSecret, { issuer: this.issuer }, (err, tok) => {
-        if (err) rej(err)
-        res(tok as T | string)
-      })
-    })
-      .then(async decoded => {
-        if (typeof decoded === 'string') {
-          this.auditLog.warn(
-            '[INVALID_TOKEN] isValid returned false: Invalid payload ' + token,
-          )
-          return false
-        }
-        return decoded
-      })
-      .catch<false>((reason: jwt.VerifyErrors | Error) => {
-        if (reason instanceof jwt.NotBeforeError) {
-          this.auditLog.warn(
-            `[INVALID_TOKEN] isValid returned false: NotBefore ${
-              reason.date
-            } ${token}`,
-          )
-        } else if (reason instanceof jwt.TokenExpiredError) {
-          this.auditLog.warn(
-            `[INVALID_TOKEN] isValid returned false: Expired ${
-              reason.expiredAt
-            } ${token}`,
-          )
-        } else if (reason instanceof jwt.JsonWebTokenError) {
-          this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
-          this.log.error('Unknown JWT Error ', reason)
-        } else {
-          this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
-          this.log.error('Unknown Error ', reason)
-        }
+      return decoded
+    } catch (reason) {
+      if (reason instanceof jwt.NotBeforeError) {
+        this.auditLog.warn(
+          `[INVALID_TOKEN] isValid returned false: NotBefore ${
+            reason.date
+          } ${token}`,
+        )
+      } else if (reason instanceof jwt.TokenExpiredError) {
+        this.auditLog.warn(
+          `[INVALID_TOKEN] isValid returned false: Expired ${
+            reason.expiredAt
+          } ${token}`,
+        )
+      } else if (reason instanceof jwt.JsonWebTokenError) {
+        this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
+        this.log.error('Unknown JWT Error ', reason)
+      } else {
+        this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
+        this.log.error('Unknown Error ', reason)
+      }
 
-        return false
-      })
+      throw reason
+    }
   }
 }

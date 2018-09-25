@@ -382,7 +382,6 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
       req =>
         req.then(req =>
           this.authService.generateResetToken(req.value).then(r => {
-            if (r === null) return { hasValue: false }
             return { value: r }
           }),
         ),
@@ -396,7 +395,6 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
       req =>
         req.then(req =>
           this.authService.resetPassword(req.token, req.password).then(r => {
-            if (r === false) return { hasValue: false }
             return { value: r }
           }),
         ),

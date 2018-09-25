@@ -9,7 +9,7 @@ import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
 import { LOGGER, AUDIT_LOGGER } from './constants'
 import { Logger } from 'winston'
-import { JWTService } from './jwt.service'
+import { JWTService, InvalidTokenError } from './jwt.service'
 import {
   Credentials,
   AccessRequest,
@@ -84,7 +84,7 @@ export class AuthService {
     return token
   }
 
-  async isValid(token: string): Promise<JWTPayload | false> {
+  async isValid(token: string): Promise<JWTPayload> {
     const decoded = await this.jwtService.isValid(token)
 
     if (!decoded) return decoded
@@ -95,7 +95,7 @@ export class AuthService {
       this.auditLog.warn(
         '[INVALID_TOKEN] isValid returned false: User not found ' + token,
       )
-      return false
+      throw new InvalidTokenError(token, 'User not found')
     }
 
     this.auditLog.info(
@@ -236,9 +236,9 @@ export class AuthService {
    * Generates a reset token for a user
    * @param email the users email
    */
-  async generateResetToken(email: string): Promise<null | string> {
+  async generateResetToken(email: string): Promise<string> {
     const user = await this.userRepository.findOne({ email })
-    if (!user) return null
+    if (!user) throw new Error(`User with email ${email} not found`)
 
     const token: ResetToken = {
       lastLogin: user.lastLogin,
@@ -257,17 +257,15 @@ export class AuthService {
    * @param token a valid reset token
    * @param password the new password
    */
-  async resetPassword(
-    token: string,
-    password: string,
-  ): Promise<string | false> {
-    // TODO: have isValid return reason for invalid token
+  async resetPassword(token: string, password: string): Promise<string> {
     const decoded = await this.jwtService.isValid<ResetToken>(token)
-    if (!decoded) return decoded
+    const success = await this.userService.update({
+      id: decoded.id,
+      password,
+    })
 
     // we shouldn't need to verify, since the token is signed with our secret - no way to create a token for another user's email
     // const user = this.userRepository.find({ email: decoded.email })
-    const success = await this.userService.update({ id: decoded.id, password })
     if (!success) {
       throw new Error(`Unable to reset password for user ${decoded.email}`)
     }
