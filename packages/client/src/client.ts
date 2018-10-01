@@ -27,6 +27,7 @@ export {
   RoleCreateData,
   Level,
   M as authservices,
+  InvalidTokenError,
 }
 
 export class AuthClient {
