@@ -58,7 +58,9 @@ export class ValidationError extends Error {
 }
 
 export class InvalidTokenError extends Error {
-  name: 'INVALID_TOKEN' = 'INVALID_TOKEN'
+  // Error.name gets wiped by plainToClass, so we also need to include another discriminator
+  kind: 'INVALID_TOKEN' = 'INVALID_TOKEN'
+  name = 'INVALID_TOKEN'
   subError?: Error
   constructor(readonly token: string, data?: string | Error) {
     super(typeof data === 'string' ? data : undefined)

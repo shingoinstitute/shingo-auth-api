@@ -303,7 +303,7 @@ export class AuthClient {
       .IsValid({ value })
       .catch(parseError)
       .catch(err => {
-        if (err.name === 'INVALID_TOKEN') {
+        if (err.kind === 'INVALID_TOKEN') {
           return toClass(InvalidTokenError)(err)
         }
         throw err
