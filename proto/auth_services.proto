@@ -45,7 +45,7 @@ service AuthService {
 
     rpc Login(Credentials) returns (StringValue) {}
 
-    rpc IsValid(StringValue) returns (IsValidResponse) {}
+    rpc IsValid(StringValue) returns (JWTPayload) {}
 
     rpc CanAccess(AccessRequest) returns (BooleanResponse) {}
 
@@ -115,11 +115,6 @@ message Role {
     string service = 4;
     repeated User users = 5;
     bool __tag_empty = 6;
-}
-
-message IsValidResponse {
-    bool valid = 1;
-    JWTPayload token = 2;
 }
 
 message JWTPayload {

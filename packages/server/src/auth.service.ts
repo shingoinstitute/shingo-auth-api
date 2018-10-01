@@ -9,7 +9,7 @@ import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
 import { LOGGER, AUDIT_LOGGER } from './constants'
 import { Logger } from 'winston'
-import { JWTService, InvalidTokenError } from './jwt.service'
+import { JWTService } from './jwt.service'
 import {
   Credentials,
   AccessRequest,
@@ -17,6 +17,7 @@ import {
   LoginAsRequest,
   PermissionSet,
   JWTPayload,
+  InvalidTokenError,
 } from '@shingo/auth-api-shared'
 
 // This api is full of potential sql injection :(
@@ -86,8 +87,6 @@ export class AuthService {
 
   async isValid(token: string): Promise<JWTPayload> {
     const decoded = await this.jwtService.isValid(token)
-
-    if (!decoded) return decoded
 
     const user = await this.userRepository.findOne(decoded)
 

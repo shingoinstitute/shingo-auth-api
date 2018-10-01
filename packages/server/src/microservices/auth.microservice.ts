@@ -302,17 +302,7 @@ export class AuthMicroservice implements M.AuthServiceImplementation {
     'isValid',
     pipe(
       validateInput(StringValue),
-      req =>
-        req.then(({ value }) =>
-          this.authService
-            .isValid(value)
-            .then(
-              token =>
-                !token
-                  ? { valid: false as false }
-                  : { valid: true as true, token },
-            ),
-        ),
+      req => req.then(({ value }) => this.authService.isValid(value)),
     ),
   )
 

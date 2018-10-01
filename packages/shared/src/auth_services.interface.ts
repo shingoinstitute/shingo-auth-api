@@ -155,22 +155,6 @@ export class JWTPayload implements RequireKeys<M.JWTPayload, 'email'> {
   }
 }
 
-export class IsValidResponse implements Required<M.IsValidResponse> {
-  @IsBoolean()
-  valid!: boolean
-
-  @ValidateNested()
-  @Type(() => JWTPayload)
-  token!: JWTPayload
-
-  constructor(response: Required<M.IsValidResponse>) {
-    if (typeof response !== 'undefined') {
-      this.valid = response.valid
-      this.token = response.token as JWTPayload
-    }
-  }
-}
-
 export class GrantRequest implements Required<M.GrantRequest> {
   @IsString()
   @IsNotEmpty()

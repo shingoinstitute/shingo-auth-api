@@ -2,14 +2,7 @@ import { Service, Inject } from 'typedi'
 import * as jwt from 'jsonwebtoken'
 import { JWT_SECRET, LOGGER, AUDIT_LOGGER, JWT_ISSUER } from './constants'
 import { Logger } from 'winston'
-import { JWTPayload } from '@shingo/auth-api-shared'
-
-export class InvalidTokenError extends Error {
-  name = 'INVALID_TOKEN'
-  constructor(readonly token: string, message?: string) {
-    super(message)
-  }
-}
+import { JWTPayload, InvalidTokenError } from '@shingo/auth-api-shared'
 
 // tslint:disable-next-line:max-classes-per-file
 @Service()
@@ -69,15 +62,21 @@ export class JWTService {
             reason.date
           } ${token}`,
         )
+
+        throw new InvalidTokenError(token, reason)
       } else if (reason instanceof jwt.TokenExpiredError) {
         this.auditLog.warn(
           `[INVALID_TOKEN] isValid returned false: Expired ${
             reason.expiredAt
           } ${token}`,
         )
+
+        throw new InvalidTokenError(token, reason)
       } else if (reason instanceof jwt.JsonWebTokenError) {
         this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
         this.log.error('Unknown JWT Error ', reason)
+
+        throw new InvalidTokenError(token, reason)
       } else {
         this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
         this.log.error('Unknown Error ', reason)

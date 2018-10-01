@@ -9,6 +9,8 @@ import {
   Level,
   authservices as M,
   RequireKeys,
+  toClass,
+  InvalidTokenError,
 } from '@shingo/auth-api-shared'
 import { PromisifyAll } from './promisify-fix'
 
@@ -299,7 +301,12 @@ export class AuthClient {
     return this.client
       .IsValid({ value })
       .catch(parseError)
-      .then(r => r && (r.valid ? r.token : r.valid))
+      .catch(err => {
+        if (err.name === 'INVALID_TOKEN') {
+          return toClass(InvalidTokenError)(err)
+        }
+        throw err
+      })
       .then(throwOnUndefined)
   }
 

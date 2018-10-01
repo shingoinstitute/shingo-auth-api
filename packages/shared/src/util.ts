@@ -1,5 +1,7 @@
-import { plainToClass, classToPlain } from 'class-transformer'
+import { plainToClass, classToPlain, classToClass } from 'class-transformer'
 import { validate, ValidationError as VError } from 'class-validator'
+
+// tslint:disable:max-classes-per-file
 
 export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
 export type Overwrite<A extends object, B extends object> = Pick<
@@ -25,7 +27,7 @@ export interface ClassType<T> {
 export const toClass = <T>(cls: ClassType<T>) => (plain: object) =>
   plainToClass(cls, plain)
 
-export { classToPlain }
+export { classToPlain, classToClass, plainToClass }
 
 export const validateInput = <T>(
   cls: ClassType<T>,
@@ -52,5 +54,16 @@ export class ValidationError extends Error {
     super()
     this.message = message || this.message
     this.errors = errors
+  }
+}
+
+export class InvalidTokenError extends Error {
+  name: 'INVALID_TOKEN' = 'INVALID_TOKEN'
+  subError?: Error
+  constructor(readonly token: string, data?: string | Error) {
+    super(typeof data === 'string' ? data : undefined)
+    if (typeof data !== 'string') {
+      this.subError = data
+    }
   }
 }
