@@ -1,6 +1,6 @@
 {
   "name": "@shingo/auth-api-server",
-  "version": "1.0.0-alpha.5",
+  "version": "1.0.0-alpha.6",
   "description": "Provide auth services for Shingo APIs",
   "main": "index.js",
   "types": "index.d.ts",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@grpc/proto-loader": "^0.3.0",
-    "@shingo/auth-api-shared": "^1.0.0-alpha.5",
+    "@shingo/auth-api-shared": "^1.0.0-alpha.6",
     "grpc": "^1.12.4",
     "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.10",
