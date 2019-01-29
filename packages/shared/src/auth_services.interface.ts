@@ -32,7 +32,7 @@ export interface RoleCreateData {
 export interface UserCreateData {
   email: string
   password: string
-  services: string
+  services: string[]
   extId: string
 }
 

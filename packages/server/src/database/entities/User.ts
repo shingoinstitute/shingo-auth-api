@@ -23,8 +23,8 @@ export class User extends U {
   @Column({ length: '255' })
   password!: string
 
-  @Column({ default: '' })
-  services!: string
+  @Column({ type: 'simple-array' })
+  services!: string[]
 
   @Column({ default: true })
   isEnabled!: boolean

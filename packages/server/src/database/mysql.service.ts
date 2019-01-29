@@ -1,6 +1,5 @@
 import { createConnection, ConnectionOptions, useContainer } from 'typeorm'
 import { Permission, Role, User } from './entities'
-import { loggerFactory } from '../logger.factory'
 import { Container as TypeDiContainer } from 'typedi'
 import { join } from 'path'
 
@@ -14,10 +13,7 @@ export interface MySQLEnvironment {
   MYSQL_AUTH_DB?: string
 }
 
-export const mysqlConnection = (
-  env: MySQLEnvironment,
-  log = loggerFactory(),
-) => {
+export const mysqlConnection = (env: MySQLEnvironment) => {
   const port =
     (env.MYSQL_PORT && parseInt(env.MYSQL_PORT.toString(), 10)) || 3306
   const options: ConnectionOptions = {

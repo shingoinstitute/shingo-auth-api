@@ -12,7 +12,7 @@ describe('User', () => {
         user.id = 1
         user.email = 'someemail@gmail.com'
         user.password = 'somepassword'
-        user.services = 'someservice'
+        user.services = ['someservice']
         user.extId = 'some external id'
 
         const errors = await validate(user, { groups })
@@ -26,7 +26,7 @@ describe('User', () => {
         const user = new User()
         user.email = 'someemail@gmail.com'
         user.password = 'somepassword'
-        user.services = 'someservice'
+        user.services = ['someservice']
         user.extId = 'some external id'
         const errors = await validate(user, { groups })
 
@@ -37,7 +37,7 @@ describe('User', () => {
         expect.assertions(15)
         const email = 'someemail@gmail.com'
         const password = 'somepassword'
-        const services = 'someservice'
+        const services = ['someservice']
         const extId = 'some external id'
         const emailMask = 0b0001
         const pwMask = 0b0010

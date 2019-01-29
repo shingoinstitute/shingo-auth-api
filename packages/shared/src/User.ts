@@ -40,7 +40,7 @@ export class User
 
   @IsOptional({ groups: ['update'] })
   @IsString({ always: true })
-  services!: string
+  services!: string[]
 
   @IsOptional({ groups: ['create', 'update'] })
   @IsBoolean({ always: true })

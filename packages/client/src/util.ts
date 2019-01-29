@@ -52,7 +52,13 @@ export const parseError = (err: ServiceError) => {
     errorMeta && errorMeta.map(e => JSON.parse(e.toString()))
 
   if (parsedErrorMeta && parsedErrorMeta.length > 0) {
-    throw toClass(Error)(parsedErrorMeta[0])
+    const errorBase = parsedErrorMeta[0]
+    const errorCls = toClass(Error)(errorBase)
+    // toClass should do this, but for some reason properties like message are missing
+    errorCls.message = errorCls.message || errorBase.message
+    errorCls.name = errorCls.name || errorBase.name
+    errorCls.stack = errorCls.stack || errorBase.stack
+    throw errorCls
   }
 
   throw err
