@@ -90,7 +90,7 @@ message Credentials {
 message User {
     int32 id = 1;
     string email = 2;
-    string services = 4;
+    repeated string services = 4;
     repeated Permission permissions = 5;
     repeated Role roles = 6;
     bool isEnabled = 7;

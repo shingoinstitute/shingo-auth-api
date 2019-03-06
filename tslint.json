@@ -1,5 +1,8 @@
 {
   "extends": ["@shingo/tslint-rules", "tslint-config-prettier"],
+  "rules": {
+    "no-console": false
+  },
   "linterOptions": {
     "exclude": [
       "**/*.proto.ts"

@@ -1,7 +1,6 @@
 import { Service, Inject } from 'typedi'
 import * as jwt from 'jsonwebtoken'
-import { JWT_SECRET, LOGGER, AUDIT_LOGGER, JWT_ISSUER } from './constants'
-import { Logger } from 'winston'
+import { JWT_SECRET, JWT_ISSUER } from './constants'
 import { JWTPayload, InvalidTokenError } from '@shingo/auth-api-shared'
 
 // tslint:disable-next-line:max-classes-per-file
@@ -10,8 +9,6 @@ export class JWTService {
   constructor(
     @Inject(JWT_SECRET) private jwtSecret: string,
     @Inject(JWT_ISSUER) private issuer: string,
-    @Inject(LOGGER) private log: Logger,
-    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   async issue<T extends object = JWTPayload>(payload: T, expiresIn = '2 days') {
@@ -57,7 +54,7 @@ export class JWTService {
       return decoded
     } catch (reason) {
       if (reason instanceof jwt.NotBeforeError) {
-        this.auditLog.warn(
+        console.warn(
           `[INVALID_TOKEN] isValid returned false: NotBefore ${
             reason.date
           } ${token}`,
@@ -65,7 +62,7 @@ export class JWTService {
 
         throw new InvalidTokenError(token, reason)
       } else if (reason instanceof jwt.TokenExpiredError) {
-        this.auditLog.warn(
+        console.warn(
           `[INVALID_TOKEN] isValid returned false: Expired ${
             reason.expiredAt
           } ${token}`,
@@ -73,13 +70,13 @@ export class JWTService {
 
         throw new InvalidTokenError(token, reason)
       } else if (reason instanceof jwt.JsonWebTokenError) {
-        this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
-        this.log.error('Unknown JWT Error ', reason)
+        console.warn('[INVALID_TOKEN] isValid returned false ' + token)
+        console.error('Unknown JWT Error ', reason)
 
         throw new InvalidTokenError(token, reason)
       } else {
-        this.auditLog.warn('[INVALID_TOKEN] isValid returned false ' + token)
-        this.log.error('Unknown Error ', reason)
+        console.warn('[INVALID_TOKEN] isValid returned false ' + token)
+        console.error('Unknown Error ', reason)
       }
 
       throw reason

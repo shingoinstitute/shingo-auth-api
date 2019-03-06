@@ -2,24 +2,21 @@ import { Permission } from './database/mysql.service'
 import _ from 'lodash'
 import { Repository } from 'typeorm'
 import { InjectRepository } from 'typeorm-typedi-extensions'
-import { Service, Inject } from 'typedi'
+import { Service } from 'typedi'
 import { PermissionCreateData, RequireKeys } from '@shingo/auth-api-shared'
-import { AUDIT_LOGGER } from './constants'
-import { Logger } from 'winston'
 
 @Service()
 export class PermissionService {
   constructor(
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>,
-    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   private create(permission: PermissionCreateData): Promise<Permission> {
     return this.permissionRepository
       .save(this.permissionRepository.create(permission))
       .then(p => {
-        this.auditLog.info('Permission created: %j', permission)
+        console.info('Permission created: %j', permission)
         return p
       })
   }
@@ -60,11 +57,7 @@ export class PermissionService {
 
   update(permission: RequireKeys<Partial<Permission>, 'id'>): Promise<boolean> {
     return this.permissionRepository.save(permission).then(data => {
-      this.auditLog.info(
-        'Permisson updated. patch: %j, new: %j',
-        permission,
-        data,
-      )
+      console.info('Permisson updated. patch: %j, new: %j', permission, data)
       return true
     })
   }
@@ -85,7 +78,7 @@ export class PermissionService {
     return this.permissionRepository
       .remove(this.permissionRepository.create({ id }))
       .then(() => {
-        this.auditLog.info('Permission deleted: %j', permission)
+        console.info('Permission deleted: %j', permission)
         return true
       })
   }

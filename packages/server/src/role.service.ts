@@ -1,21 +1,18 @@
 import { Role } from './database/mysql.service'
 import { Repository } from 'typeorm'
 import { InjectRepository } from 'typeorm-typedi-extensions'
-import { Service, Inject } from 'typedi'
+import { Service } from 'typedi'
 import { RequireKeys } from '@shingo/auth-api-shared'
-import { AUDIT_LOGGER } from './constants'
-import { Logger } from 'winston'
 
 @Service()
 export class RoleService {
   constructor(
     @InjectRepository(Role) private roleRepository: Repository<Role>,
-    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   async create(role: Role): Promise<Role> {
     return this.roleRepository.save(role).then(c => {
-      this.auditLog.info('Role created: %j', role)
+      console.info('Role created: %j', role)
       return c
     })
   }
@@ -42,7 +39,7 @@ export class RoleService {
 
   async update(role: RequireKeys<Partial<Role>, 'id'>): Promise<boolean> {
     return this.roleRepository.save(role).then(data => {
-      this.auditLog.info('Role updated. patch: %j, new: %j', role, data)
+      console.info('Role updated. patch: %j, new: %j', role, data)
       return true
     })
   }
@@ -52,7 +49,7 @@ export class RoleService {
     return this.roleRepository
       .remove(this.roleRepository.create(role))
       .then(() => {
-        this.auditLog.info('Role deleted: %j', role)
+        console.info('Role deleted: %j', role)
         return true
       })
   }

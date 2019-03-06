@@ -4,11 +4,9 @@ import { PermissionService } from './permission.service'
 import * as scrypt from 'scrypt'
 import _ from 'lodash'
 import { NotFoundError } from './util'
-import { Service, Inject } from 'typedi'
+import { Service } from 'typedi'
 import { InjectRepository } from 'typeorm-typedi-extensions'
 import { Repository } from 'typeorm'
-import { LOGGER, AUDIT_LOGGER } from './constants'
-import { Logger } from 'winston'
 import { JWTService } from './jwt.service'
 import {
   Credentials,
@@ -36,15 +34,13 @@ export class AuthService {
     private userService: UserService,
     private permissionService: PermissionService,
     private jwtService: JWTService,
-    @Inject(LOGGER) private log: Logger,
-    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   async login(creds: Credentials): Promise<string> {
     const user = await this.userRepository.findOne({ email: creds.email })
 
     if (typeof user === 'undefined') {
-      this.auditLog.warn(
+      console.warn(
         '[EMAIL_NOT_FOUND] Invalid log in attempt: ' +
           creds.email +
           '@' +
@@ -59,7 +55,7 @@ export class AuthService {
     )
 
     if (!matches) {
-      this.auditLog.warn(
+      console.warn(
         '[INVALID_PASSWORD] Invalid log in attempt: ' +
           creds.email +
           '@' +
@@ -79,9 +75,7 @@ export class AuthService {
     }
 
     await this.userService.update(updateData)
-    this.auditLog.info(
-      'Successful login: ' + creds.email + '@' + creds.services,
-    )
+    console.info(`Successful login: ${creds.email}@${creds.services}`)
     return token
   }
 
@@ -91,13 +85,13 @@ export class AuthService {
     const user = await this.userRepository.findOne(decoded)
 
     if (!user) {
-      this.auditLog.warn(
+      console.warn(
         '[INVALID_TOKEN] isValid returned false: User not found ' + token,
       )
       throw new InvalidTokenError(token, 'User not found')
     }
 
-    this.auditLog.info(
+    console.info(
       `User ${decoded.email}${
         decoded.extId ? ':' + decoded.extId : ''
       } authenticated`,
@@ -122,19 +116,16 @@ export class AuthService {
     })
 
     if (typeof user === 'undefined') {
-      this.auditLog.warn(
-        '[USER_NOT_FOUND]  accessRequest denied: %j',
-        accessRequest,
-      )
+      console.warn('[USER_NOT_FOUND]  accessRequest denied: %j', accessRequest)
       return false
     }
 
     const accepted = this.userHasAccess(user, accessRequest)
 
     if (accepted.length > 0) {
-      this.auditLog.info('accessRequest accepted: %j', accessRequest)
+      console.info('accessRequest accepted: %j', accessRequest)
     } else {
-      this.auditLog.warn(
+      console.warn(
         '[NO_PERMISSION_FOUND]  accessRequest denied: %j',
         accessRequest,
       )
@@ -158,7 +149,7 @@ export class AuthService {
     }
 
     await this.permissionService.update(updateData)
-    this.auditLog.info('[USER]  Permission Grant Request : %j', grantRequest)
+    console.info('[USER]  Permission Grant Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
@@ -178,7 +169,7 @@ export class AuthService {
     }
 
     await this.permissionService.update(updateData)
-    this.auditLog.info('[ROLE]  Permission Grant Request : %j', grantRequest)
+    console.info('[ROLE]  Permission Grant Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
@@ -202,7 +193,7 @@ export class AuthService {
     }
 
     await this.permissionService.update(updateData)
-    this.auditLog.info('[USER]  Permission Revoke Request : %j', grantRequest)
+    console.info('[USER]  Permission Revoke Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
@@ -226,7 +217,7 @@ export class AuthService {
     }
 
     await this.permissionService.update(updateData)
-    this.auditLog.info('[ROLE]  Permission Revoke Request : %j', grantRequest)
+    console.info('[ROLE]  Permission Revoke Request : %j', grantRequest)
 
     return { permissionId: permission.id, accessorId: grantRequest.accessorId }
   }
@@ -301,10 +292,8 @@ export class AuthService {
       (adminUser.roles || []).some(r => r.name === 'Affiliate Manager')
 
     if (!hasPerm) {
-      this.log.error(
-        "User %d does not have sufficient permission to access 'user -- %d'",
-        adminId,
-        userId,
+      console.error(
+        `User ${adminId} does not have sufficient permission to access 'user -- ${userId}'`,
       )
       throw new Error(`Invalid Permissions for 'user -- ${userId}'`)
     }
@@ -315,7 +304,7 @@ export class AuthService {
       throw new NotFoundError('Invalid User ID')
     }
 
-    this.auditLog.info('Login As Request Successful: %j', loginAsRequest)
+    console.info('Login As Request Successful: ', loginAsRequest)
 
     return this.jwtService.issue({ email: reqUser.email, extId: reqUser.extId })
   }

@@ -10,14 +10,11 @@ import {
   UserCreateData,
   RequireKeys,
 } from '@shingo/auth-api-shared'
-import { AUDIT_LOGGER } from './constants'
-import { Logger } from 'winston'
 
 @Service()
 export class UserService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
-    @Inject(AUDIT_LOGGER) private auditLog: Logger,
   ) {}
 
   async create(createData: UserCreateData): Promise<User> {
@@ -32,7 +29,7 @@ export class UserService {
     user.extId = createData.extId
 
     return this.userRepository.save(user).then(data => {
-      this.auditLog.info('User created %j', data)
+      console.info('User created %j', data)
       return data
     })
   }
@@ -62,7 +59,7 @@ export class UserService {
       | RequireKeys<Partial<User>, 'id'>
       | RequireKeys<Partial<User>, 'extId'>,
   ): Promise<boolean> {
-    this.auditLog.debug('Update data: %j', updateData)
+    console.debug('Update data: %j', updateData)
 
     const existingUser =
       typeof updateData.id !== 'undefined'
@@ -91,7 +88,7 @@ export class UserService {
     return this.userRepository
       .save(this.userRepository.create(update))
       .then(data => {
-        this.auditLog.info('User updated. patch: %j, new: %j', update, data)
+        console.info('User updated. patch: %j, new: %j', update, data)
         return true
       })
   }
@@ -114,7 +111,7 @@ export class UserService {
     if (user.email === '') return true
 
     return this.userRepository.remove(user as User).then(() => {
-      this.auditLog.info('User deleted: %j', user)
+      console.info('User deleted: %j', user)
       return true
     })
   }
@@ -122,7 +119,7 @@ export class UserService {
   async addRole(roleOp: RoleOperation): Promise<boolean> {
     const { userEmail, roleId } = roleOp
 
-    this.auditLog.debug('Trying to add role to user: %j', roleOp)
+    console.debug('Trying to add role to user: %j', roleOp)
 
     const user = await this.userRepository.findOne(
       { email: userEmail },
@@ -137,7 +134,7 @@ export class UserService {
     }
 
     return this.userRepository.save(updateData).then(() => {
-      this.auditLog.info('User role added: %j', roleOp)
+      console.info('User role added: %j', roleOp)
       return true
     })
   }
@@ -158,7 +155,7 @@ export class UserService {
     }
 
     return this.userRepository.save(updateData).then(data => {
-      this.auditLog.info('User role removed: %j', data)
+      console.info('User role removed: %j', data)
       return true
     })
   }

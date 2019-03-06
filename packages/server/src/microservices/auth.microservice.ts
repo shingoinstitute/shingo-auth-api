@@ -1,4 +1,3 @@
-import { loggerFactory } from '../logger.factory'
 import * as grpc from 'grpc'
 import * as path from 'path'
 import {
@@ -9,7 +8,7 @@ import {
 } from '../index'
 import { Options as ProtoOptions, loadSync } from '@grpc/proto-loader'
 import { Service } from 'typedi'
-import { handleUnary, undefinedToEmpty } from '../util'
+import { handleUnary as makeUnaryCall, undefinedToEmpty } from '../util'
 import { pipe } from '../fp'
 import { User, Permission, Role } from '../database/entities'
 import {
@@ -27,10 +26,6 @@ import {
 } from '@shingo/auth-api-shared'
 
 // tslint:disable:variable-name no-shadowed-variable
-
-const log = loggerFactory()
-const makeUnaryCall = handleUnary(log)
-
 @Service()
 export class AuthMicroservice implements M.AuthServiceImplementation {
   service: grpc.ServiceDefinition<M.AuthServiceImplementation>

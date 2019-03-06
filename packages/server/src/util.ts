@@ -1,4 +1,3 @@
-import { Logger } from 'winston'
 import { handleUnaryCall, ServiceError, Metadata, status as Status } from 'grpc'
 
 // tslint:disable:max-classes-per-file
@@ -33,14 +32,14 @@ export class SError extends Error implements ServiceError {
   }
 }
 
-export const handleUnary = (logger: Logger) => <Req, Res>(
+export const handleUnary = <Req, Res>(
   name: string,
   fn: (req: Req) => Promise<Res>,
 ): handleUnaryCall<Req, Res> => (call, cb) => {
   fn(call.request)
     .then(record => cb(null, record))
     .catch(error => {
-      logger.error(`Error in ${name}(): `, error)
+      console.error(`Error in ${name}(): `, error)
       cb(new SError(error), null)
     })
 }
